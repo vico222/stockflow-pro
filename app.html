@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockFlow Pro — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0e14;--bg2:#11141d;--surface:#171b27;--s2:#1e2235;--s3:#252b40;
+  --b1:rgba(255,255,255,.06);--b2:rgba(255,255,255,.11);--b3:rgba(255,255,255,.17);
+  --t1:#f0f2f8;--t2:#8892b0;--t3:#4a5270;--t4:#2e3555;
+  --green:#00e88a;--gd:#00b86e;--gs:rgba(0,232,138,.07);--gm:rgba(0,232,138,.15);
+  --yellow:#fbbf24;--ys:rgba(251,191,36,.07);--ym:rgba(251,191,36,.15);
+  --red:#ff5757;--rs:rgba(255,87,87,.07);--rm:rgba(255,87,87,.15);
+  --blue:#4d8bff;--bd:#2563eb;--bs:rgba(77,139,255,.08);--bm:rgba(77,139,255,.16);
+  --gold:#f59e0b;
+  --sidebar:240px;--hh:60px;
+  --r:12px;--rsm:8px;--rxs:5px;
+  --font:'Sora',sans-serif;--mono:'JetBrains Mono',monospace;
+  --sh:0 4px 20px rgba(0,0,0,.45);--shl:0 12px 48px rgba(0,0,0,.65);
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font);background:var(--bg);color:var(--t1);
+  min-height:100vh;display:flex;font-size:14px;line-height:1.6;overflow-x:hidden;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%,rgba(77,139,255,.05) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%,rgba(0,232,138,.03) 0%,transparent 60%);
+}
+
+/* ── TOAST ── */
+#toasts{position:fixed;top:72px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--rsm);box-shadow:var(--shl);font-size:12.5px;font-weight:500;color:var(--t1);pointer-events:all;min-width:260px;animation:tIn .3s cubic-bezier(.34,1.4,.64,1) both;position:relative;overflow:hidden}
+.toast::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.toast.s::before{background:var(--green)}.toast.e::before{background:var(--red)}.toast.i::before{background:var(--blue)}
+.toast-prog{position:absolute;bottom:0;left:0;height:2px;animation:tProg 3.2s linear forwards}
+.toast.s .toast-prog{background:var(--green)}.toast.e .toast-prog{background:var(--red)}.toast.i .toast-prog{background:var(--blue)}
+@keyframes tIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+@keyframes tProg{from{width:100%}to{width:0}}
+
+/* ── LOADING SCREEN ── */
+#loading-screen{
+  position:fixed;inset:0;background:var(--bg);z-index:9000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+}
+.loading-logo{width:48px;height:48px;background:linear-gradient(135deg,var(--blue),#6366f1);border-radius:13px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff}
+.loading-text{font-size:14px;color:var(--t2)}
+.loading-bar{width:200px;height:3px;background:var(--s2);border-radius:99px;overflow:hidden}
+.loading-fill{height:100%;background:var(--blue);border-radius:99px;animation:loadFill 1.5s ease-in-out infinite}
+@keyframes loadFill{0%{width:0;margin-left:0}50%{width:60%;margin-left:20%}100%{width:0;margin-left:100%}}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--b1);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;transition:transform .28s cubic-bezier(.4,0,.2,1)}
+.sb-logo{padding:20px 18px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:11px}
+.logo-mark{width:34px;height:34px;background:linear-gradient(135deg,var(--blue),#6366f1);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;flex-shrink:0}
+.logo-name{font-weight:700;font-size:14px;letter-spacing:-.4px}
+.logo-sub{font-size:8.5px;color:var(--t3);letter-spacing:.8px;text-transform:uppercase;margin-top:1px}
+.sb-section{padding:14px 10px 4px}
+.sb-lbl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--t4);font-weight:600;padding:0 12px 7px;display:block}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 13px;border-radius:var(--rxs);color:var(--t2);font-weight:500;font-size:12.5px;cursor:pointer;transition:all .14s;margin-bottom:2px;position:relative;user-select:none}
+.ni:hover{background:var(--s2);color:var(--t1)}
+.ni.active{background:var(--bm);color:var(--blue)}
+.ni.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:55%;background:var(--blue);border-radius:0 3px 3px 0}
+.ni svg{width:15px;height:15px;opacity:.65;flex-shrink:0}
+.ni.active svg,.ni:hover svg{opacity:1}
+.nb{margin-left:auto;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:20px;background:var(--rs);color:var(--red);border:1px solid rgba(255,87,87,.2)}
+.sb-bot{margin-top:auto;padding:12px 10px;border-top:1px solid var(--b1)}
+.user-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rxs);background:var(--s2);cursor:pointer;border:1px solid var(--b1)}
+.ua{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366f1,var(--blue));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.user-name{font-size:12px;font-weight:600}
+.user-role{font-size:10px;color:var(--t3)}
+.btn-logout{background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;margin-left:auto;padding:2px;transition:color .15s}
+.btn-logout:hover{color:var(--red)}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sidebar);flex:1;min-height:100vh;display:flex;flex-direction:column}
+.hdr{height:var(--hh);background:rgba(17,20,29,.94);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 28px;gap:12px;position:sticky;top:0;z-index:100;backdrop-filter:blur(20px)}
+.hdr-title{font-size:15px;font-weight:700;letter-spacing:-.4px}
+.hdr-meta{font-size:10.5px;color:var(--t3);display:flex;align-items:center;gap:6px;margin-top:1px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.hbtn{width:33px;height:33px;border-radius:var(--rxs);background:var(--surface);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);font-size:14px;transition:all .14s}
+.hbtn:hover{border-color:var(--b2);color:var(--t1)}
+.mob-toggle{display:none;background:none;border:none;color:var(--t1);font-size:20px;cursor:pointer}
+.role-badge{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px}
+.rb-admin{background:var(--bm);color:var(--blue);border:1px solid rgba(77,139,255,.25)}
+.rb-operator{background:var(--gm);color:var(--green);border:1px solid rgba(0,232,138,.2)}
+.rb-viewer{background:var(--s3);color:var(--t2);border:1px solid var(--b2)}
+
+/* ── CONTENT ── */
+.content{padding:26px 30px;flex:1}
+.ph{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px}
+.ph-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);font-weight:600;margin-bottom:4px}
+.ph-title{font-size:18px;font-weight:800;letter-spacing:-.5px}
+.ph-actions{display:flex;gap:8px}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--b1)}
+.card-title{font-size:13px;font-weight:700;letter-spacing:-.2px}
+.card-sub{font-size:10.5px;color:var(--t3);margin-top:2px}
+.card-body{padding:18px 20px}
+
+/* ── STAT CARDS ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat{background:var(--surface);border:1px solid var(--b1);border-radius:var(--r);padding:20px 22px;position:relative;overflow:hidden;transition:border-color .15s}
+.stat:hover{border-color:var(--b2)}
+.stat-bar{position:absolute;top:0;left:0;right:0;height:3px}
+.stat-bar.g{background:linear-gradient(90deg,var(--green),var(--gd))}
+.stat-bar.y{background:linear-gradient(90deg,var(--yellow),#d97706)}
+.stat-bar.r{background:linear-gradient(90deg,var(--red),#e03333)}
+.stat-bar.b{background:linear-gradient(90deg,var(--blue),#6366f1)}
+.stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);font-weight:600;margin-bottom:10px}
+.stat-val{font-size:32px;font-weight:800;letter-spacing:-1.5px;line-height:1;margin-bottom:6px}
+.stat-val.g{color:var(--green)}.stat-val.r{color:var(--red)}.stat-val.y{color:var(--yellow)}.stat-val.b{color:var(--blue)}.stat-val.w{color:var(--t1)}
+.stat-meta{font-size:11px;color:var(--t3)}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;min-width:500px}
+.tbl th{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);font-weight:600;padding:10px 14px;text-align:left;background:rgba(0,0,0,.12);border-bottom:1px solid var(--b1)}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--b1);font-size:12.5px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:var(--s2)}
+.mono{font-family:var(--mono);font-size:10.5px;color:var(--t3)}
+
+/* ── PROGRESS BAR ── */
+.prog{height:4px;background:var(--s3);border-radius:99px;overflow:hidden;margin-top:4px}
+.prog-fill{height:100%;border-radius:99px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.pg{background:linear-gradient(90deg,var(--green),var(--gd))}
+.py{background:linear-gradient(90deg,var(--yellow),#d97706)}
+.pr{background:linear-gradient(90deg,var(--red),#e03333)}
+
+/* ── PILLS ── */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700}
+.pill::before{content:'';width:5px;height:5px;border-radius:50%}
+.pill-green{background:var(--gs);color:var(--green);border:1px solid rgba(0,232,138,.15)}
+.pill-green::before{background:var(--green)}
+.pill-yellow{background:var(--ys);color:var(--yellow);border:1px solid rgba(251,191,36,.15)}
+.pill-yellow::before{background:var(--yellow)}
+.pill-red{background:var(--rs);color:var(--red);border:1px solid rgba(255,87,87,.15)}
+.pill-red::before{background:var(--red)}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--rsm);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .16s;line-height:1;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:var(--bd)}
+.btn-ghost{background:var(--s2);color:var(--t2);border-color:var(--b2)}
+.btn-ghost:hover{color:var(--t1)}
+.btn-outline{background:transparent;color:var(--t2);border-color:var(--b2)}
+.btn-outline:hover{background:var(--s2);color:var(--t1)}
+.btn-red{background:var(--rm);color:var(--red);border-color:rgba(255,87,87,.25)}
+.btn-yellow{background:var(--ym);color:var(--yellow);border-color:rgba(251,191,36,.25)}
+.btn-sm{padding:6px 12px;font-size:11.5px}
+.btn-xs{padding:4px 9px;font-size:11px}
+
+/* ── FORM ── */
+.fg{margin-bottom:14px}.fg:last-child{margin-bottom:0}
+.flabel{font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;display:block}
+.req{color:var(--red)}
+.fc{width:100%;padding:9px 12px;border:1px solid var(--b2);border-radius:var(--rsm);font-family:var(--font);font-size:12.5px;color:var(--t1);background:var(--surface);outline:none;transition:border-color .15s}
+.fc:focus{border-color:rgba(77,139,255,.45);box-shadow:0 0 0 3px rgba(77,139,255,.1)}
+.fc option{background:var(--s2)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* ── MODALS ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.modal-bg.show{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--b2);border-radius:16px;width:100%;max-width:520px;margin:16px;animation:mIn .2s cubic-bezier(.34,1.2,.64,1);box-shadow:var(--shl);max-height:92vh;overflow-y:auto}
+@keyframes mIn{from{opacity:0;transform:translateY(16px) scale(.96)}to{opacity:1;transform:none}}
+.mhdr{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--b1);position:sticky;top:0;background:var(--bg2);z-index:2}
+.mtitle{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.mclose{background:none;border:none;color:var(--t3);font-size:17px;cursor:pointer;padding:4px;border-radius:4px;transition:all .14s}
+.mclose:hover{color:var(--t1);background:var(--s2)}
+.mbody{padding:20px 24px}
+.mfoot{padding:16px 24px;border-top:1px solid var(--b1);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--bg2)}
+
+/* ── EMPTY STATE ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;text-align:center}
+.empty-icon{width:60px;height:60px;border-radius:50%;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px}
+.empty-title{font-size:15px;font-weight:700;margin-bottom:6px}
+.empty-desc{font-size:12.5px;color:var(--t3);max-width:280px;line-height:1.6;margin-bottom:16px}
+
+/* ── OVERLAY ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:190}
+.overlay.show{display:block}
+
+/* ── TABS ── */
+.page-tabs{display:flex;border-bottom:1px solid var(--b1);margin-bottom:18px}
+.page-tab{padding:10px 16px;font-size:12.5px;font-weight:500;color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .14s}
+.page-tab:hover{color:var(--t1)}.page-tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+
+/* ── SPINNER ── */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin .7s linear infinite;display:inline-block}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0);box-shadow:var(--shl)}
+  .main{margin-left:0}.mob-toggle{display:block}
+  .content{padding:16px}.stat-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){.stat-grid{grid-template-columns:1fr}.frow{grid-template-columns:1fr}}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.au{animation:fadeUp .4s ease both}
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="loading-logo">SF</div>
+  <div class="loading-text">Memuat StockFlow Pro…</div>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+</div>
+
+<div id="toasts"></div>
+<div class="overlay" id="overlay" onclick="closeSb()"></div>
+
+<!-- ════ SIDEBAR ════ -->
+<aside class="sidebar" id="sb">
+  <div class="sb-logo">
+    <div class="logo-mark">SF</div>
+    <div>
+      <div class="logo-name">StockFlow Pro</div>
+      <div class="logo-sub">Inventory & Asset Control</div>
+    </div>
+  </div>
+  <div class="sb-section">
+    <span class="sb-lbl">Operations</span>
+    <div class="ni active" onclick="go('dashboard',this)">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+      Command Center
+    </div>
+    <div class="ni" onclick="go('inventory',this)">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z"/><path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+      Inventory
+      <span class="nb" id="nb-inv" style="display:none">0</span>
+    </div>
+    <div class="ni" onclick="go('projects',this)">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 6a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm0 6a1 1 0 011-1h6a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z"/></svg>
+      Projects & Sites
+    </div>
+    <div class="ni" onclick="go('transactions',this)">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3z" clip-rule="evenodd"/></svg>
+      Transactions
+    </div>
+  </div>
+  <div class="sb-section">
+    <span class="sb-lbl">Manage</span>
+    <div class="ni" onclick="go('masterparts',this)">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8h8V6z" clip-rule="evenodd"/></svg>
+      Master Parts
+    </div>
+    <div class="ni admin-only" onclick="go('users',this)">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+      Users
+    </div>
+  </div>
+  <div class="sb-bot">
+    <div class="user-row">
+      <div class="ua" id="ua-init">?</div>
+      <div style="flex:1;min-width:0">
+        <div class="user-name" id="ua-name">Loading…</div>
+        <div class="user-role" id="ua-role">—</div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()" title="Logout">⏻</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ════ MAIN ════ -->
+<div class="main">
+  <header class="hdr">
+    <button class="mob-toggle" onclick="toggleSb()">☰</button>
+    <div>
+      <div class="hdr-title" id="hdr-title">Command Center</div>
+      <div class="hdr-meta"><div class="live-dot"></div><span>Live</span><span style="color:var(--t4)">·</span><span id="hdr-company">Loading…</span></div>
+    </div>
+    <div class="hdr-right">
+      <div class="hbtn" onclick="loadAll()" id="refresh-btn" title="Refresh data">↻</div>
+      <span class="role-badge rb-admin" id="role-badge">Admin</span>
+    </div>
+  </header>
+
+  <!-- DASHBOARD -->
+  <div class="content" id="pg-dashboard">
+    <div class="ph au">
+      <div><div class="ph-lbl">Overview</div><div class="ph-title">Command Center</div></div>
+      <div class="ph-actions">
+        <button class="btn btn-primary btn-sm" onclick="openModal('m-addInv')">+ Add Stock</button>
+      </div>
+    </div>
+    <div class="stat-grid au">
+      <div class="stat"><div class="stat-bar g"></div><div class="stat-lbl">Total Inventory Value</div><div class="stat-val g" id="d-val">—</div><div class="stat-meta" id="d-val-meta">Loading…</div></div>
+      <div class="stat"><div class="stat-bar b"></div><div class="stat-lbl">Total SKUs</div><div class="stat-val b" id="d-sku">—</div><div class="stat-meta" id="d-sku-meta">Loading…</div></div>
+      <div class="stat"><div class="stat-bar r"></div><div class="stat-lbl">Risk Alerts</div><div class="stat-val r" id="d-alerts">—</div><div class="stat-meta" id="d-alerts-meta">Loading…</div></div>
+      <div class="stat"><div class="stat-bar y"></div><div class="stat-lbl">Projects / Sites</div><div class="stat-val w" id="d-proj">—</div><div class="stat-meta" id="d-proj-meta">Loading…</div></div>
+    </div>
+    <div class="card au">
+      <div class="card-hdr">
+        <div><div class="card-title">⚠ Critical & Low Stock</div><div class="card-sub">Sorted by risk · Click Restock to update quantity</div></div>
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>#</th><th>Part</th><th>Site</th><th>Stock / Min</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="dash-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVENTORY -->
+  <div class="content" id="pg-inventory" style="display:none">
+    <div class="ph au">
+      <div><div class="ph-lbl">Asset Management</div><div class="ph-title">Site Inventory</div></div>
+      <div class="ph-actions">
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Export</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal('m-addInv')">+ Add Item</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <input class="fc" style="width:240px;padding:8px 12px" type="text" placeholder="⌕  Search part, site…" oninput="filterInv(this.value)">
+      <select class="fc" style="width:auto" id="filter-site" onchange="filterInv()"><option value="">All Sites</option></select>
+      <select class="fc" style="width:auto" id="filter-status" onchange="filterInv()">
+        <option value="">All Status</option>
+        <option value="critical">Critical</option>
+        <option value="low">Low</option>
+        <option value="ready">Ready</option>
+      </select>
+    </div>
+    <div class="card au">
+      <div class="tbl-wrap">
+        <table class="tbl" id="inv-table">
+          <thead><tr><th>Part No.</th><th>Name</th><th>Site</th><th>Qty / Min</th><th>Price</th><th>Value</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="inv-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECTS -->
+  <div class="content" id="pg-projects" style="display:none">
+    <div class="ph au">
+      <div><div class="ph-lbl">Portfolio</div><div class="ph-title">Projects & Sites</div></div>
+      <div class="ph-actions">
+        <button class="btn btn-ghost btn-sm admin-only" onclick="openModal('m-addSite')">+ Add Site</button>
+        <button class="btn btn-primary btn-sm admin-only" onclick="openModal('m-addProj')">+ New Project</button>
+      </div>
+    </div>
+    <div class="page-tabs">
+      <div class="page-tab active" onclick="switchPTab(this,'pt-projects')">Projects</div>
+      <div class="page-tab" onclick="switchPTab(this,'pt-sites')">Sites</div>
+    </div>
+    <div id="pt-projects"><div id="proj-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px"></div></div>
+    <div id="pt-sites" style="display:none">
+      <div class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Site</th><th>Project</th><th>Industry</th><th>Location</th><th class="admin-only">Actions</th></tr></thead><tbody id="sites-tbody"></tbody></table></div></div>
+    </div>
+  </div>
+
+  <!-- TRANSACTIONS -->
+  <div class="content" id="pg-transactions" style="display:none">
+    <div class="ph au">
+      <div><div class="ph-lbl">Audit Trail</div><div class="ph-title">GI & Transactions</div></div>
+      <div class="ph-actions">
+        <button class="btn btn-primary btn-sm" onclick="openModal('m-addTx')">+ Log Transaction</button>
+      </div>
+    </div>
+    <div class="card au"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Part</th><th>Site</th><th>Qty</th><th>Total</th><th>GI No.</th><th>By</th></tr></thead><tbody id="tx-tbody"></tbody></table></div></div>
+  </div>
+
+  <!-- MASTER PARTS -->
+  <div class="content" id="pg-masterparts" style="display:none">
+    <div class="ph au">
+      <div><div class="ph-lbl">Reference Data</div><div class="ph-title">Master Parts Catalog</div></div>
+      <div class="ph-actions admin-only">
+        <button class="btn btn-primary btn-sm" onclick="openModal('m-addPart')">+ Add Part</button>
+      </div>
+    </div>
+    <div class="card au"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Part No.</th><th>Name</th><th>Default Price</th><th>Category</th><th class="admin-only">Actions</th></tr></thead><tbody id="parts-tbody"></tbody></table></div></div>
+  </div>
+
+  <!-- USERS -->
+  <div class="content" id="pg-users" style="display:none">
+    <div class="ph au">
+      <div><div class="ph-lbl">Access Control</div><div class="ph-title">Team Members</div></div>
+      <div class="ph-actions admin-only">
+        <button class="btn btn-primary btn-sm" onclick="openModal('m-inviteUser')">+ Invite User</button>
+      </div>
+    </div>
+    <div class="card au"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead><tbody id="users-tbody"></tbody></table></div></div>
+  </div>
+</div><!-- /main -->
+
+<!-- ════ MODALS ════ -->
+
+<!-- ADD INVENTORY -->
+<div class="modal-bg" id="m-addInv"><div class="modal">
+  <div class="mhdr"><div class="mtitle" id="m-addInv-title">📦 Add Inventory Item</div><button class="mclose" onclick="closeModal('m-addInv')">✕</button></div>
+  <div class="mbody">
+    <input type="hidden" id="edit-inv-id">
+    <div class="frow">
+      <div class="fg"><label class="flabel">Part Number <span class="req">*</span></label><input class="fc" id="f-pn" type="text" placeholder="HF-2240-A" list="parts-dl"><datalist id="parts-dl"></datalist></div>
+      <div class="fg"><label class="flabel">Part Name <span class="req">*</span></label><input class="fc" id="f-name" type="text" placeholder="Hydraulic Filter"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Project <span class="req">*</span></label><select class="fc" id="f-proj" onchange="onProjChange()"><option value="">Select…</option></select></div>
+      <div class="fg"><label class="flabel">Site <span class="req">*</span></label><select class="fc" id="f-site"><option value="">Select…</option></select></div>
+    </div>
+    <div class="frow" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="fg"><label class="flabel">Quantity <span class="req">*</span></label><input class="fc" id="f-qty" type="number" min="0" placeholder="0"></div>
+      <div class="fg"><label class="flabel">Min Stock <span class="req">*</span></label><input class="fc" id="f-min" type="number" min="0" placeholder="0"></div>
+      <div class="fg"><label class="flabel">Max Stock</label><input class="fc" id="f-max" type="number" min="0" placeholder="0"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Unit Price (USD)</label><input class="fc" id="f-price" type="number" min="0" step="0.01" placeholder="0.00"></div>
+      <div class="fg"><label class="flabel">Model / Equipment</label><input class="fc" id="f-model" type="text" placeholder="CAT 320D"></div>
+    </div>
+  </div>
+  <div class="mfoot"><button class="btn btn-ghost" onclick="closeModal('m-addInv')">Cancel</button><button class="btn btn-primary" onclick="saveInv()">Save Item</button></div>
+</div></div>
+
+<!-- ADD PROJECT -->
+<div class="modal-bg" id="m-addProj"><div class="modal">
+  <div class="mhdr"><div class="mtitle">🏗️ New Project</div><button class="mclose" onclick="closeModal('m-addProj')">✕</button></div>
+  <div class="mbody">
+    <div class="fg"><label class="flabel">Project Name <span class="req">*</span></label><input class="fc" id="p-name" type="text" placeholder="Mining Project Alpha"></div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Industry</label><select class="fc" id="p-industry"><option>Mining</option><option>Construction</option><option>Logistics</option><option>Energy</option></select></div>
+      <div class="fg"><label class="flabel">Location</label><input class="fc" id="p-location" type="text" placeholder="Kalimantan"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Start Date</label><input class="fc" id="p-start" type="date"></div>
+      <div class="fg"><label class="flabel">End Date</label><input class="fc" id="p-end" type="date"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Readiness Target (%)</label><input class="fc" id="p-target" type="number" value="90"></div>
+      <div class="fg"><label class="flabel">Project Manager</label><input class="fc" id="p-pm" type="text" placeholder="Name"></div>
+    </div>
+  </div>
+  <div class="mfoot"><button class="btn btn-ghost" onclick="closeModal('m-addProj')">Cancel</button><button class="btn btn-primary" onclick="saveProj()">Save Project</button></div>
+</div></div>
+
+<!-- ADD SITE -->
+<div class="modal-bg" id="m-addSite"><div class="modal">
+  <div class="mhdr"><div class="mtitle">📍 Add Site</div><button class="mclose" onclick="closeModal('m-addSite')">✕</button></div>
+  <div class="mbody">
+    <div class="fg"><label class="flabel">Site Name <span class="req">*</span></label><input class="fc" id="s-name" type="text" placeholder="Site Echo"></div>
+    <div class="fg"><label class="flabel">Project <span class="req">*</span></label><select class="fc" id="s-proj"><option value="">Select…</option></select></div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Industry</label><select class="fc" id="s-industry"><option>Mining</option><option>Construction</option><option>Logistics</option><option>Energy</option></select></div>
+      <div class="fg"><label class="flabel">Location</label><input class="fc" id="s-location" type="text" placeholder="City / Area"></div>
+    </div>
+  </div>
+  <div class="mfoot"><button class="btn btn-ghost" onclick="closeModal('m-addSite')">Cancel</button><button class="btn btn-primary" onclick="saveSite()">Save Site</button></div>
+</div></div>
+
+<!-- ADD MASTER PART -->
+<div class="modal-bg" id="m-addPart"><div class="modal">
+  <div class="mhdr"><div class="mtitle">🔧 Add Master Part</div><button class="mclose" onclick="closeModal('m-addPart')">✕</button></div>
+  <div class="mbody">
+    <div class="frow">
+      <div class="fg"><label class="flabel">Part Number <span class="req">*</span></label><input class="fc" id="mp-pn" type="text" placeholder="HF-2240-A"></div>
+      <div class="fg"><label class="flabel">Part Name <span class="req">*</span></label><input class="fc" id="mp-name" type="text" placeholder="Hydraulic Filter"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Default Price (USD)</label><input class="fc" id="mp-price" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="fg"><label class="flabel">Category</label><input class="fc" id="mp-category" type="text" placeholder="Filters"></div>
+    </div>
+  </div>
+  <div class="mfoot"><button class="btn btn-ghost" onclick="closeModal('m-addPart')">Cancel</button><button class="btn btn-primary" onclick="savePart()">Save Part</button></div>
+</div></div>
+
+<!-- ADD TRANSACTION -->
+<div class="modal-bg" id="m-addTx"><div class="modal">
+  <div class="mhdr"><div class="mtitle">📋 Log GI Transaction</div><button class="mclose" onclick="closeModal('m-addTx')">✕</button></div>
+  <div class="mbody">
+    <div class="frow">
+      <div class="fg"><label class="flabel">Date <span class="req">*</span></label><input class="fc" id="tx-date" type="date"></div>
+      <div class="fg"><label class="flabel">Site <span class="req">*</span></label><select class="fc" id="tx-site"><option value="">Select…</option></select></div>
+    </div>
+    <div class="fg"><label class="flabel">Inventory Item <span class="req">*</span></label><select class="fc" id="tx-inv"><option value="">Select item…</option></select></div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Quantity <span class="req">*</span></label><input class="fc" id="tx-qty" type="number" min="1" placeholder="0"></div>
+      <div class="fg"><label class="flabel">GI Number</label><input class="fc" id="tx-gi" type="text" placeholder="GI-XXXXX"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Requester</label><input class="fc" id="tx-req" type="text" placeholder="Name"></div>
+      <div class="fg"><label class="flabel">Machine / Unit</label><input class="fc" id="tx-unit" type="text" placeholder="CAT-320D-01"></div>
+    </div>
+  </div>
+  <div class="mfoot"><button class="btn btn-ghost" onclick="closeModal('m-addTx')">Cancel</button><button class="btn btn-primary" onclick="saveTx()">Log Transaction</button></div>
+</div></div>
+
+<!-- INVITE USER -->
+<div class="modal-bg" id="m-inviteUser"><div class="modal">
+  <div class="mhdr"><div class="mtitle">👥 Invite Team Member</div><button class="mclose" onclick="closeModal('m-inviteUser')">✕</button></div>
+  <div class="mbody">
+    <div class="fg"><label class="flabel">Full Name</label><input class="fc" id="iu-name" type="text" placeholder="John Smith"></div>
+    <div class="fg"><label class="flabel">Email</label><input class="fc" id="iu-email" type="email" placeholder="john@company.com"></div>
+    <div class="fg"><label class="flabel">Role</label>
+      <select class="fc" id="iu-role">
+        <option value="operator">Operator — Can update stock</option>
+        <option value="viewer">Viewer — Read-only</option>
+        <option value="admin">Admin — Full access</option>
+      </select>
+    </div>
+    <div style="background:var(--bs);border:1px solid rgba(77,139,255,.2);border-radius:var(--rsm);padding:12px;font-size:12px;color:var(--blue);margin-top:8px">
+      💡 User akan mendapat email undangan untuk set password mereka sendiri.
+    </div>
+  </div>
+  <div class="mfoot"><button class="btn btn-ghost" onclick="closeModal('m-inviteUser')">Cancel</button><button class="btn btn-primary" onclick="inviteUser()">Send Invitation</button></div>
+</div></div>
+
+<!-- RESTOCK MODAL -->
+<div class="modal-bg" id="m-restock"><div class="modal" style="max-width:420px">
+  <div class="mhdr"><div class="mtitle">🔄 Update Stock</div><button class="mclose" onclick="closeModal('m-restock')">✕</button></div>
+  <div class="mbody">
+    <div style="background:var(--rm);border:1px solid rgba(255,87,87,.25);border-radius:var(--rsm);padding:12px 14px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;color:var(--red)" id="restock-item-name">—</div>
+      <div style="font-size:11.5px;color:var(--t3);margin-top:3px" id="restock-item-meta">—</div>
+    </div>
+    <input type="hidden" id="restock-inv-id">
+    <div class="fg"><label class="flabel">New Quantity (total on hand)</label><input class="fc" id="restock-qty" type="number" min="0" placeholder="0"></div>
+    <div class="fg"><label class="flabel">Notes (optional)</label><input class="fc" id="restock-notes" type="text" placeholder="Restock from supplier X"></div>
+  </div>
+  <div class="mfoot"><button class="btn btn-ghost" onclick="closeModal('m-restock')">Cancel</button><button class="btn btn-primary" onclick="doRestock()">✅ Update Stock</button></div>
+</div></div>
+
+<!-- CONFIRM DELETE -->
+<div class="modal-bg" id="m-confirm"><div class="modal" style="max-width:400px">
+  <div class="mhdr"><div class="mtitle">Confirm Delete</div><button class="mclose" onclick="closeModal('m-confirm')">✕</button></div>
+  <div class="mbody"><div style="font-size:13.5px;color:var(--t2)" id="confirm-msg">Are you sure?</div></div>
+  <div class="mfoot"><button class="btn btn-ghost" onclick="closeModal('m-confirm')">Cancel</button><button class="btn btn-red" id="confirm-ok">Delete</button></div>
+</div></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// SUPABASE INIT
+// ════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://osrtcishupybpvlcvoke.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zcnRjaXNodXB5YnB2bGN2b2tlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNzQzODIsImV4cCI6MjA5Mjg1MDM4Mn0.x3Wu0hW0eUbcXJQb7sg2zQD0hHqVVDSNNw0HkBgz74I';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ════════════════════════════════════════════════════════
+// APP STATE
+// ════════════════════════════════════════════════════════
+let STATE = {
+  user: null, profile: null, company: null,
+  inventory: [], projects: [], sites: [], masterParts: [], transactions: [], users: []
+};
+
+// ════════════════════════════════════════════════════════
+// INIT — cek auth dulu
+// ════════════════════════════════════════════════════════
+async function init(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session){
+    window.location.href = 'index.html';
+    return;
+  }
+  STATE.user = session.user;
+  await loadProfile();
+  await loadAll();
+  hideLoading();
+}
+
+async function loadProfile(){
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', STATE.user.id).single();
+  STATE.profile = profile;
+
+  if(profile?.company_id){
+    const { data: company } = await sb.from('companies').select('*').eq('id', profile.company_id).single();
+    STATE.company = company;
+    document.getElementById('hdr-company').textContent = company?.name || 'Workspace';
+  }
+
+  // Update UI
+  const name = profile?.full_name || STATE.user.email?.split('@')[0] || 'User';
+  document.getElementById('ua-name').textContent = name;
+  document.getElementById('ua-init').textContent = name[0].toUpperCase();
+  document.getElementById('ua-role').textContent = profile?.role || 'viewer';
+
+  const role = profile?.role || 'viewer';
+  const rb = document.getElementById('role-badge');
+  rb.textContent = role.charAt(0).toUpperCase()+role.slice(1);
+  rb.className = `role-badge rb-${role}`;
+
+  // Hide admin-only elements for non-admins
+  if(role !== 'admin'){
+    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
+  }
+}
+
+async function loadAll(){
+  if(!STATE.profile?.company_id){
+    toast('i','Setup Diperlukan','Belum ada company terhubung. Hubungi admin.');
+    hideLoading();
+    return;
+  }
+  const cid = STATE.profile.company_id;
+
+  const [inv, proj, sites, parts, tx, users] = await Promise.all([
+    sb.from('site_inventory').select('*').eq('company_id',cid).order('quantity'),
+    sb.from('projects').select('*').eq('company_id',cid),
+    sb.from('sites').select('*').eq('company_id',cid),
+    sb.from('master_parts').select('*').eq('company_id',cid),
+    sb.from('transactions').select('*').eq('company_id',cid).order('created_at',{ascending:false}).limit(50),
+    sb.from('profiles').select('*').eq('company_id',cid)
+  ]);
+
+  STATE.inventory   = inv.data   || [];
+  STATE.projects    = proj.data  || [];
+  STATE.sites       = sites.data || [];
+  STATE.masterParts = parts.data || [];
+  STATE.transactions= tx.data    || [];
+  STATE.users       = users.data || [];
+
+  renderDashboard();
+  renderInventory();
+  renderProjects();
+  renderTransactions();
+  renderMasterParts();
+  renderUsers();
+  populateSelects();
+
+  // Update badges
+  const alerts = STATE.inventory.filter(i=>getStatus(i)!=='ready').length;
+  const nb = document.getElementById('nb-inv');
+  if(alerts > 0){ nb.textContent = alerts; nb.style.display = ''; }
+  else nb.style.display = 'none';
+}
+
+function hideLoading(){
+  document.getElementById('loading-screen').style.display = 'none';
+}
+
+// ════════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════════
+function getStatus(item){
+  if(item.quantity === 0) return 'out';
+  if(item.quantity / item.min_stock <= 0.25) return 'critical';
+  if(item.quantity < item.min_stock) return 'low';
+  return 'ready';
+}
+function statusPill(s){
+  const m={critical:'pill-red',low:'pill-yellow',ready:'pill-green',out:'pill-red'};
+  const l={critical:'Critical',low:'Low',ready:'Ready',out:'Out of Stock'};
+  return `<span class="pill ${m[s]}">${l[s]}</span>`;
+}
+function getRisk(item){
+  const s=getStatus(item);
+  return s==='critical'||s==='out' ? 18000 : s==='low' ? 6000 : 0;
+}
+function fmt$(v){
+  if(v>=1000000) return '$'+(v/1000000).toFixed(2)+'M';
+  if(v>=1000) return '$'+(v/1000).toFixed(1)+'K';
+  return '$'+v.toFixed(0);
+}
+function fmtDate(d){ return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
+function getSiteName(id){ return STATE.sites.find(s=>s.id===id)?.name || id; }
+function getProjName(id){ return STATE.projects.find(p=>p.id===id)?.name || id; }
+
+function toast(type, title, msg){
+  const icons={s:'✅',e:'❌',i:'ℹ️'};
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><div style="flex:1"><div style="font-weight:700;font-size:12px">${title}</div><div style="font-size:11.5px;color:var(--t2)">${msg}</div></div><button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:13px;flex-shrink:0">✕</button><div class="toast-prog"></div>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(), 3600);
+}
+
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-bg').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('show')}));
+
+// ════════════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════════════
+const pageMap={dashboard:'Command Center',inventory:'Inventory',projects:'Projects & Sites',transactions:'Transactions',masterparts:'Master Parts',users:'Team Members'};
+function go(page, el){
+  document.querySelectorAll('[id^="pg-"]').forEach(p=>p.style.display='none');
+  const pg = document.getElementById('pg-'+page);
+  if(pg) pg.style.display='';
+  document.getElementById('hdr-title').textContent = pageMap[page]||page;
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('active');
+  closeSb();
+}
+function toggleSb(){ document.getElementById('sb').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
+function closeSb(){ document.getElementById('sb').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+function switchPTab(tab, targetId){
+  document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById('pt-projects').style.display = targetId==='pt-projects' ? '' : 'none';
+  document.getElementById('pt-sites').style.display = targetId==='pt-sites' ? '' : 'none';
+}
+
+// ════════════════════════════════════════════════════════
+// DASHBOARD RENDER
+// ════════════════════════════════════════════════════════
+function renderDashboard(){
+  const inv = STATE.inventory;
+  const totalVal = inv.reduce((s,i)=>s+(i.quantity||0)*(i.unit_price||0),0);
+  const crits = inv.filter(i=>getStatus(i)==='critical');
+  const lows  = inv.filter(i=>getStatus(i)==='low');
+  const alerts = crits.length + lows.length;
+
+  document.getElementById('d-val').textContent = fmt$(totalVal);
+  document.getElementById('d-val-meta').textContent = `${inv.length} SKUs · ${STATE.sites.length} sites`;
+  document.getElementById('d-sku').textContent = inv.length;
+  document.getElementById('d-sku-meta').textContent = `${inv.filter(i=>getStatus(i)==='ready').length} ready · ${alerts} alerts`;
+  document.getElementById('d-alerts').textContent = alerts;
+  document.getElementById('d-alerts-meta').textContent = `${crits.length} critical · ${lows.length} low`;
+  document.getElementById('d-proj').textContent = `${STATE.projects.length}/${STATE.sites.length}`;
+  document.getElementById('d-proj-meta').textContent = `${STATE.projects.length} projects · ${STATE.sites.length} sites`;
+
+  const sorted = [...inv].sort((a,b)=>getRisk(b)-getRisk(a));
+  const tb = document.getElementById('dash-tbody');
+
+  if(!sorted.length){
+    tb.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📦</div><div class="empty-title">Belum ada inventory</div><div class="empty-desc">Mulai dengan menambahkan item pertama.</div><button class="btn btn-primary btn-sm" onclick="openModal('m-addInv')">+ Add Stock</button></div></td></tr>`;
+    return;
+  }
+
+  tb.innerHTML = sorted.map((item,i)=>{
+    const st = getStatus(item);
+    const risk = getRisk(item);
+    const ratio = item.min_stock ? Math.min(Math.round((item.quantity/item.min_stock)*100),100) : 100;
+    const barCls = st==='critical'?'pr':st==='low'?'py':'pg';
+    const isTop = i===0 && risk>0;
+    return `<tr style="${isTop?'background:rgba(255,87,87,.06)':''}">
+      <td style="font-size:12px;color:var(--t3);font-weight:700">#${i+1}${isTop?'<br><span style="font-size:9px;background:var(--red);color:#fff;padding:1px 6px;border-radius:20px;font-weight:700">TOP</span>':''}</td>
+      <td><div style="font-weight:700">${item.part_name}</div><div class="mono">${item.part_number}${item.model_equipment?' · '+item.model_equipment:''}</div></td>
+      <td>${getSiteName(item.site_id)}</td>
+      <td><div style="font-size:13px;font-weight:800;color:${st==='ready'?'var(--green)':st==='critical'?'var(--red)':'var(--yellow)'}">${item.quantity}<span style="font-size:10.5px;font-weight:400;color:var(--t3)"> / ${item.min_stock}</span></div><div class="prog" style="width:100px;margin-top:4px"><div class="prog-fill ${barCls}" style="width:${ratio}%"></div></div></td>
+      <td>${statusPill(st)}</td>
+      <td><div style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn btn-red btn-xs" onclick="openRestock('${item.id}')">🔄 Restock</button>
+        <button class="btn btn-ghost btn-xs" onclick="editInv('${item.id}')">✏</button>
+        ${risk>0?`<button class="btn btn-ghost btn-xs" onclick="copyWA('${item.id}')">📲</button>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// INVENTORY RENDER
+// ════════════════════════════════════════════════════════
+function renderInventory(data=null){
+  const items = data || [...STATE.inventory].sort((a,b)=>getRisk(b)-getRisk(a));
+  const tb = document.getElementById('inv-tbody');
+  if(!items.length){
+    tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">📦</div><div class="empty-title">Belum ada inventory</div><div class="empty-desc">Tambahkan item pertama atau import via CSV.</div><button class="btn btn-primary btn-sm" onclick="openModal('m-addInv')">+ Add Item</button></div></td></tr>`;
+    return;
+  }
+  tb.innerHTML = items.map(item=>{
+    const st = getStatus(item);
+    const val = (item.quantity||0)*(item.unit_price||0);
+    return `<tr>
+      <td class="mono">${item.part_number}</td>
+      <td style="font-weight:600">${item.part_name}</td>
+      <td>${getSiteName(item.site_id)}</td>
+      <td><span style="font-weight:800;font-size:13px;color:${st==='ready'?'var(--green)':st==='critical'?'var(--red)':'var(--yellow)'}">${item.quantity}</span><span style="color:var(--t3);font-size:11px"> / ${item.min_stock}</span></td>
+      <td class="mono">$${(item.unit_price||0).toFixed(2)}</td>
+      <td class="mono" style="color:var(--green)">$${val.toFixed(2)}</td>
+      <td>${statusPill(st)}</td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-ghost btn-xs" onclick="editInv('${item.id}')">✏</button>
+        <button class="btn btn-red btn-xs admin-only" onclick="deleteInv('${item.id}')">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterInv(q=''){
+  const site = document.getElementById('filter-site')?.value||'';
+  const status = document.getElementById('filter-status')?.value||'';
+  q = q || document.querySelector('#pg-inventory input')?.value||'';
+  const lower = q.toLowerCase();
+  const data = STATE.inventory.filter(i=>{
+    const mQ = !q || (i.part_number+i.part_name+(i.model_equipment||'')).toLowerCase().includes(lower);
+    const mS = !site || i.site_id===site;
+    const mSt = !status || getStatus(i)===status;
+    return mQ&&mS&&mSt;
+  }).sort((a,b)=>getRisk(b)-getRisk(a));
+  renderInventory(data);
+}
+
+// ════════════════════════════════════════════════════════
+// PROJECTS RENDER
+// ════════════════════════════════════════════════════════
+function renderProjects(){
+  const grid = document.getElementById('proj-grid');
+  if(!STATE.projects.length){
+    grid.innerHTML=`<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🏗️</div><div class="empty-title">Belum ada project</div><div class="empty-desc">Buat project pertama untuk mulai mengorganisir inventory per site.</div><button class="btn btn-primary btn-sm admin-only" onclick="openModal('m-addProj')">+ New Project</button></div>`;
+    return;
+  }
+  grid.innerHTML = STATE.projects.map(p=>{
+    const sites = STATE.sites.filter(s=>s.project_id===p.id);
+    const items = STATE.inventory.filter(i=>i.project_id===p.id);
+    const val = items.reduce((s,i)=>s+(i.quantity||0)*(i.unit_price||0),0);
+    const crits = items.filter(i=>getStatus(i)==='critical').length;
+    return `<div class="card" style="padding:18px;transition:transform .2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="width:36px;height:36px;background:var(--bs);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;border:1px solid rgba(77,139,255,.15)">🏗️</div>
+        <div style="flex:1"><div style="font-weight:700;font-size:13px">${p.name}</div><div style="font-size:10.5px;color:var(--t3)">${p.industry||'—'} · ${p.location||'—'}</div></div>
+        ${crits>0?`<span class="pill pill-red" style="font-size:10px">${crits} critical</span>`:'<span class="pill pill-green" style="font-size:10px">OK</span>'}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:6px;padding:10px"><div style="font-size:9.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Sites</div><div style="font-size:18px;font-weight:800">${sites.length}</div></div>
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:6px;padding:10px"><div style="font-size:9.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Value</div><div style="font-size:15px;font-weight:800;color:var(--green)">${fmt$(val)}</div></div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="go('inventory',null)">View Inventory</button>
+        <button class="btn btn-ghost btn-sm admin-only" onclick="deleteProj('${p.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Sites table
+  const stb = document.getElementById('sites-tbody');
+  stb.innerHTML = STATE.sites.map(s=>`<tr>
+    <td style="font-weight:700">${s.name}</td>
+    <td>${getProjName(s.project_id)}</td>
+    <td style="color:var(--t2)">${s.industry||'—'}</td>
+    <td style="color:var(--t2)">${s.location||'—'}</td>
+    <td class="admin-only"><button class="btn btn-red btn-xs" onclick="deleteSite('${s.id}')">🗑</button></td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// TRANSACTIONS RENDER
+// ════════════════════════════════════════════════════════
+function renderTransactions(){
+  const tb = document.getElementById('tx-tbody');
+  if(!STATE.transactions.length){
+    tb.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Belum ada transaksi</div><div class="empty-desc">Log GI pertama untuk mulai membangun audit trail.</div></div></td></tr>`;
+    return;
+  }
+  tb.innerHTML = STATE.transactions.map(t=>`<tr>
+    <td style="color:var(--t3);font-size:11.5px">${fmtDate(t.transaction_date||t.created_at)}</td>
+    <td style="font-weight:600">${t.part_name}</td>
+    <td>${getSiteName(t.site_id)}</td>
+    <td style="font-weight:700">${t.quantity}</td>
+    <td class="mono" style="color:var(--green)">$${(t.total_value||0).toFixed(2)}</td>
+    <td class="mono">${t.gi_number||'—'}</td>
+    <td style="color:var(--t3)">${t.requester||'—'}</td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// MASTER PARTS RENDER
+// ════════════════════════════════════════════════════════
+function renderMasterParts(){
+  const tb = document.getElementById('parts-tbody');
+  if(!STATE.masterParts.length){
+    tb.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="empty-icon">🔧</div><div class="empty-title">Belum ada master part</div><div class="empty-desc">Tambahkan part ke catalog untuk digunakan di berbagai site.</div></div></td></tr>`;
+    return;
+  }
+  tb.innerHTML = STATE.masterParts.map(p=>`<tr>
+    <td class="mono" style="font-weight:700">${p.part_number}</td>
+    <td style="font-weight:600">${p.part_name}</td>
+    <td class="mono">$${(p.default_price||0).toFixed(2)}</td>
+    <td style="color:var(--t2)">${p.category||'—'}</td>
+    <td class="admin-only"><button class="btn btn-red btn-xs" onclick="deletePart('${p.id}')">🗑</button></td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// USERS RENDER
+// ════════════════════════════════════════════════════════
+function renderUsers(){
+  const tb = document.getElementById('users-tbody');
+  const roleColors={admin:'var(--blue)',operator:'var(--green)',viewer:'var(--t2)'};
+  tb.innerHTML = STATE.users.map(u=>`<tr>
+    <td style="font-weight:600">${u.full_name||'—'}</td>
+    <td style="color:var(--t2);font-size:12px">${STATE.users.find(x=>x.id===u.id)?.email||'—'}</td>
+    <td><span style="font-size:11px;font-weight:700;color:${roleColors[u.role]||'var(--t2)'};text-transform:capitalize">${u.role}</span></td>
+    <td style="color:var(--t3);font-size:11.5px">${fmtDate(u.created_at)}</td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// POPULATE SELECTS
+// ════════════════════════════════════════════════════════
+function populateSelects(){
+  const projOpts = '<option value="">Select…</option>'+STATE.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  const siteOpts = '<option value="">Select…</option>'+STATE.sites.map(s=>`<option value="${s.id}">${s.name} (${getProjName(s.project_id)})</option>`).join('');
+
+  ['f-proj','s-proj'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=projOpts;});
+  ['tx-site'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=siteOpts;});
+  ['filter-site'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.innerHTML='<option value="">All Sites</option>'+STATE.sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  });
+
+  // Parts datalist
+  const dl = document.getElementById('parts-dl');
+  if(dl) dl.innerHTML = STATE.masterParts.map(p=>`<option value="${p.part_number}">${p.part_number} — ${p.part_name}</option>`).join('');
+
+  // TX inventory select
+  const txInv = document.getElementById('tx-inv');
+  if(txInv) txInv.innerHTML = '<option value="">Select item…</option>'+STATE.inventory.map(i=>`<option value="${i.id}">${i.part_number} — ${i.part_name} @ ${getSiteName(i.site_id)}</option>`).join('');
+}
+
+function onProjChange(){
+  const pid = document.getElementById('f-proj')?.value;
+  const el = document.getElementById('f-site');
+  if(!el) return;
+  const sites = pid ? STATE.sites.filter(s=>s.project_id===pid) : STATE.sites;
+  el.innerHTML='<option value="">Select…</option>'+sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// SAVE FUNCTIONS
+// ════════════════════════════════════════════════════════
+async function saveInv(){
+  const cid = STATE.profile?.company_id;
+  const editId = document.getElementById('edit-inv-id').value;
+  const pn    = document.getElementById('f-pn').value.trim();
+  const name  = document.getElementById('f-name').value.trim();
+  const projId= document.getElementById('f-proj').value;
+  const siteId= document.getElementById('f-site').value;
+  const qty   = parseInt(document.getElementById('f-qty').value)||0;
+  const min   = parseInt(document.getElementById('f-min').value)||0;
+  const max   = parseInt(document.getElementById('f-max').value)||0;
+  const price = parseFloat(document.getElementById('f-price').value)||0;
+  const model = document.getElementById('f-model').value.trim();
+
+  if(!pn||!name||!projId||!siteId){toast('e','Validation Error','Part Number, Name, Project dan Site wajib diisi.');return;}
+
+  const payload = {company_id:cid,project_id:projId,site_id:siteId,part_number:pn,part_name:name,quantity:qty,min_stock:min,max_stock:max||null,unit_price:price,model_equipment:model||null};
+
+  let error;
+  if(editId){
+    ({error} = await sb.from('site_inventory').update(payload).eq('id',editId));
+  } else {
+    ({error} = await sb.from('site_inventory').insert(payload));
+    // auto-add to master parts if not exists
+    const exists = STATE.masterParts.find(p=>p.part_number===pn);
+    if(!exists && pn && name){
+      await sb.from('master_parts').upsert({company_id:cid,part_number:pn,part_name:name,default_price:price},{onConflict:'company_id,part_number'});
+    }
+  }
+
+  if(error){toast('e','Error',error.message);return;}
+  closeModal('m-addInv');
+  document.getElementById('edit-inv-id').value='';
+  ['f-pn','f-name','f-qty','f-min','f-max','f-price','f-model'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  toast('s','Tersimpan','Item inventory berhasil disimpan.');
+  await loadAll();
+}
+
+function editInv(id){
+  const item = STATE.inventory.find(i=>i.id===id);
+  if(!item) return;
+  document.getElementById('edit-inv-id').value=id;
+  document.getElementById('f-pn').value=item.part_number;
+  document.getElementById('f-name').value=item.part_name;
+  document.getElementById('f-qty').value=item.quantity;
+  document.getElementById('f-min').value=item.min_stock;
+  document.getElementById('f-max').value=item.max_stock||'';
+  document.getElementById('f-price').value=item.unit_price||'';
+  document.getElementById('f-model').value=item.model_equipment||'';
+  document.getElementById('m-addInv-title').textContent='✏ Edit Inventory Item';
+  setTimeout(()=>{
+    document.getElementById('f-proj').value=item.project_id||'';
+    onProjChange();
+    setTimeout(()=>{document.getElementById('f-site').value=item.site_id||'';},50);
+  },50);
+  openModal('m-addInv');
+}
+
+async function deleteInv(id){
+  showConfirm('Hapus item inventory ini?',async()=>{
+    const {error}=await sb.from('site_inventory').delete().eq('id',id);
+    if(error){toast('e','Error',error.message);return;}
+    toast('s','Deleted','Item berhasil dihapus.');
+    await loadAll();
+  });
+}
+
+async function saveProj(){
+  const cid = STATE.profile?.company_id;
+  const {error} = await sb.from('projects').insert({
+    company_id:cid, name:document.getElementById('p-name').value.trim(),
+    industry:document.getElementById('p-industry').value,
+    location:document.getElementById('p-location').value,
+    start_date:document.getElementById('p-start').value||null,
+    end_date:document.getElementById('p-end').value||null,
+    readiness_target:parseInt(document.getElementById('p-target').value)||90,
+    project_manager:document.getElementById('p-pm').value
+  });
+  if(error){toast('e','Error',error.message);return;}
+  closeModal('m-addProj');
+  toast('s','Project Dibuat','Project baru berhasil dibuat.');
+  await loadAll();
+}
+
+async function deleteProj(id){
+  showConfirm('Hapus project ini? Sites terkait juga akan dihapus.',async()=>{
+    await sb.from('sites').delete().eq('project_id',id);
+    const {error}=await sb.from('projects').delete().eq('id',id);
+    if(error){toast('e','Error',error.message);return;}
+    toast('s','Deleted','Project berhasil dihapus.');
+    await loadAll();
+  });
+}
+
+async function saveSite(){
+  const cid = STATE.profile?.company_id;
+  const {error}=await sb.from('sites').insert({
+    company_id:cid,
+    project_id:document.getElementById('s-proj').value,
+    name:document.getElementById('s-name').value.trim(),
+    industry:document.getElementById('s-industry').value,
+    location:document.getElementById('s-location').value
+  });
+  if(error){toast('e','Error',error.message);return;}
+  closeModal('m-addSite');
+  toast('s','Site Ditambahkan','Site baru berhasil dibuat.');
+  await loadAll();
+}
+
+async function deleteSite(id){
+  showConfirm('Hapus site ini?',async()=>{
+    const {error}=await sb.from('sites').delete().eq('id',id);
+    if(error){toast('e','Error',error.message);return;}
+    toast('s','Deleted','Site berhasil dihapus.');
+    await loadAll();
+  });
+}
+
+async function savePart(){
+  const cid = STATE.profile?.company_id;
+  const {error}=await sb.from('master_parts').insert({
+    company_id:cid,
+    part_number:document.getElementById('mp-pn').value.trim(),
+    part_name:document.getElementById('mp-name').value.trim(),
+    default_price:parseFloat(document.getElementById('mp-price').value)||0,
+    category:document.getElementById('mp-category').value
+  });
+  if(error){toast('e','Error',error.message);return;}
+  closeModal('m-addPart');
+  toast('s','Part Ditambahkan','Master part berhasil disimpan.');
+  await loadAll();
+}
+
+async function deletePart(id){
+  showConfirm('Hapus master part ini?',async()=>{
+    const {error}=await sb.from('master_parts').delete().eq('id',id);
+    if(error){toast('e','Error',error.message);return;}
+    toast('s','Deleted','Part berhasil dihapus.');
+    await loadAll();
+  });
+}
+
+async function saveTx(){
+  const cid = STATE.profile?.company_id;
+  const invId = document.getElementById('tx-inv').value;
+  const qty = parseInt(document.getElementById('tx-qty').value)||0;
+  const item = STATE.inventory.find(i=>i.id===invId);
+  if(!invId||!qty){toast('e','Validation','Item dan quantity wajib diisi.');return;}
+  if(item && item.quantity < qty){toast('e','Insufficient Stock',`Hanya ${item.quantity} unit tersedia.`);return;}
+
+  const {error}=await sb.from('transactions').insert({
+    company_id:cid,
+    site_id:document.getElementById('tx-site').value||item?.site_id,
+    inventory_id:invId,
+    part_number:item?.part_number||'',
+    part_name:item?.part_name||'',
+    quantity:qty,
+    unit_price:item?.unit_price||0,
+    gi_number:document.getElementById('tx-gi').value||null,
+    requester:document.getElementById('tx-req').value||null,
+    machine_unit:document.getElementById('tx-unit').value||null,
+    transaction_date:document.getElementById('tx-date').value||null,
+    created_by:STATE.user.id
+  });
+  if(error){toast('e','Error',error.message);return;}
+
+  // Kurangi stock
+  if(item){
+    await sb.from('site_inventory').update({quantity:item.quantity-qty}).eq('id',invId);
+  }
+  closeModal('m-addTx');
+  toast('s','Transaksi Dicatat',`GI ${qty}× ${item?.part_name} berhasil dicatat.`);
+  await loadAll();
+}
+
+async function inviteUser(){
+  const email = document.getElementById('iu-email').value.trim();
+  const name  = document.getElementById('iu-name').value.trim();
+  const role  = document.getElementById('iu-role').value;
+  if(!email){toast('e','Error','Email wajib diisi.');return;}
+
+  // Supabase admin invite (ini akan kirim email)
+  const {data,error}=await sb.auth.admin?.inviteUserByEmail?.(email,{data:{full_name:name,role}})
+    || await sb.auth.signUp({email,password:Math.random().toString(36).slice(2,10),options:{data:{full_name:name}}});
+
+  closeModal('m-inviteUser');
+  toast('s','Undangan Dikirim',`${email} diundang sebagai ${role}. Mereka akan mendapat email.`);
+}
+
+// ════════════════════════════════════════════════════════
+// RESTOCK
+// ════════════════════════════════════════════════════════
+function openRestock(id){
+  const item = STATE.inventory.find(i=>i.id===id);
+  if(!item) return;
+  document.getElementById('restock-inv-id').value=id;
+  document.getElementById('restock-item-name').textContent=`${item.part_name} (${item.part_number})`;
+  document.getElementById('restock-item-meta').textContent=`${getSiteName(item.site_id)} · ${item.quantity}/${item.min_stock} · Suggested: ${item.min_stock*2} units`;
+  document.getElementById('restock-qty').value=item.min_stock*2;
+  openModal('m-restock');
+}
+
+async function doRestock(){
+  const id  = document.getElementById('restock-inv-id').value;
+  const qty = parseInt(document.getElementById('restock-qty').value)||0;
+  const {error}=await sb.from('site_inventory').update({quantity:qty}).eq('id',id);
+  if(error){toast('e','Error',error.message);return;}
+  closeModal('m-restock');
+  toast('s','Stock Updated','Quantity berhasil diupdate.');
+  await loadAll();
+}
+
+// ════════════════════════════════════════════════════════
+// WHATSAPP COPY
+// ════════════════════════════════════════════════════════
+function copyWA(id){
+  const item = STATE.inventory.find(i=>i.id===id);
+  if(!item) return;
+  const risk = getRisk(item);
+  const msg=`🚨 *CRITICAL STOCK ALERT*
+━━━━━━━━━━━━━━━━
+📍 Site: ${getSiteName(item.site_id)}
+📦 Part: ${item.part_name} (${item.part_number})
+⚠️ Stock: ${item.quantity}/${item.min_stock} unit
+💸 Risk: $${risk.toLocaleString()}/day potential loss
+✅ Action: Restock ${item.min_stock*2} units ASAP
+
+_Sent via StockFlow Pro_`;
+  navigator.clipboard?.writeText(msg).then(()=>toast('s','Copied!','Pesan WA berhasil dicopy ke clipboard.'));
+}
+
+// ════════════════════════════════════════════════════════
+// EXPORT CSV
+// ════════════════════════════════════════════════════════
+function exportCSV(){
+  const headers='Part Number,Part Name,Site,Project,Quantity,Min Stock,Unit Price,Total Value,Status';
+  const rows=STATE.inventory.map(i=>`"${i.part_number}","${i.part_name}","${getSiteName(i.site_id)}","${getProjName(i.project_id)}",${i.quantity},${i.min_stock},${i.unit_price||0},${((i.quantity||0)*(i.unit_price||0)).toFixed(2)},"${getStatus(i)}"`);
+  const csv=[headers,...rows].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`inventory_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  toast('s','Export Selesai','File CSV berhasil didownload.');
+}
+
+// ════════════════════════════════════════════════════════
+// CONFIRM DELETE
+// ════════════════════════════════════════════════════════
+function showConfirm(msg, cb){
+  document.getElementById('confirm-msg').textContent=msg;
+  document.getElementById('confirm-ok').onclick=()=>{closeModal('m-confirm');cb();};
+  openModal('m-confirm');
+}
+
+// ════════════════════════════════════════════════════════
+// REFRESH
+// ════════════════════════════════════════════════════════
+async function doRefresh(){
+  const btn=document.getElementById('refresh-btn');
+  btn.classList.add('spin');
+  await loadAll();
+  btn.classList.remove('spin');
+  toast('s','Refreshed','Data berhasil diperbarui.');
+}
+
+// ════════════════════════════════════════════════════════
+// LOGOUT
+// ════════════════════════════════════════════════════════
+async function doLogout(){
+  await sb.auth.signOut();
+  window.location.href='index.html';
+}
+
+// ════════════════════════════════════════════════════════
+// PROGRESS BARS ANIMATION
+// ════════════════════════════════════════════════════════
+function animateProgressBars(){
+  setTimeout(()=>{
+    document.querySelectorAll('.prog-fill').forEach(el=>{
+      const w=el.style.width;el.style.width='0';
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{el.style.width=w;}));
+    });
+  },200);
+}
+
+// ════════════════════════════════════════════════════════
+// START
+// ════════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockFlow Pro — Login</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0e14;--surface:#171b27;--s2:#1e2235;
+  --b1:rgba(255,255,255,.07);--b2:rgba(255,255,255,.12);
+  --t1:#f0f2f8;--t2:#8892b0;--t3:#4a5270;
+  --blue:#4d8bff;--bd:#2563eb;--bm:rgba(77,139,255,.16);
+  --green:#00e88a;--red:#ff5757;
+  --font:'Sora',sans-serif;
+}
+body{
+  font-family:var(--font);background:var(--bg);color:var(--t1);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%,rgba(77,139,255,.07) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%,rgba(0,232,138,.04) 0%,transparent 60%);
+}
+
+.card{
+  background:var(--surface);border:1px solid var(--b1);border-radius:16px;
+  padding:40px;width:100%;max-width:420px;
+  box-shadow:0 24px 80px rgba(0,0,0,.6);
+}
+
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:32px;justify-content:center}
+.logo-mark{
+  width:40px;height:40px;background:linear-gradient(135deg,var(--blue),#6366f1);
+  border-radius:11px;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:16px;color:#fff;
+  box-shadow:0 0 24px rgba(77,139,255,.3);
+}
+.logo-text{font-weight:700;font-size:18px;letter-spacing:-.4px}
+.logo-sub{font-size:9px;color:var(--t3);letter-spacing:.8px;text-transform:uppercase;margin-top:1px}
+
+.page-title{font-size:22px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px;text-align:center}
+.page-sub{font-size:13px;color:var(--t2);text-align:center;margin-bottom:28px;line-height:1.5}
+
+.tabs{display:flex;background:var(--s2);border-radius:8px;padding:3px;margin-bottom:24px}
+.tab-btn{
+  flex:1;padding:8px;border:none;background:transparent;
+  font-family:var(--font);font-size:13px;font-weight:500;color:var(--t2);
+  border-radius:6px;cursor:pointer;transition:all .2s;
+}
+.tab-btn.active{background:var(--surface);color:var(--t1);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+
+.form-group{margin-bottom:16px}
+label{font-size:11.5px;font-weight:600;color:var(--t2);margin-bottom:6px;display:block}
+input{
+  width:100%;padding:11px 14px;border:1px solid var(--b2);border-radius:8px;
+  font-family:var(--font);font-size:13.5px;color:var(--t1);background:var(--s2);
+  outline:none;transition:border-color .2s,box-shadow .2s;
+}
+input:focus{border-color:rgba(77,139,255,.5);box-shadow:0 0 0 3px rgba(77,139,255,.1)}
+input::placeholder{color:var(--t3)}
+
+.btn-submit{
+  width:100%;padding:12px;border:none;border-radius:8px;
+  background:var(--blue);color:#fff;font-family:var(--font);
+  font-size:14px;font-weight:600;cursor:pointer;
+  transition:all .2s;margin-top:4px;
+  box-shadow:0 4px 16px rgba(77,139,255,.3);
+}
+.btn-submit:hover{background:var(--bd);box-shadow:0 4px 20px rgba(77,139,255,.4)}
+.btn-submit:active{transform:scale(.98)}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+.divider{
+  display:flex;align-items:center;gap:12px;margin:20px 0;
+  color:var(--t3);font-size:12px;
+}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--b1)}
+
+.msg{
+  padding:11px 14px;border-radius:8px;font-size:12.5px;
+  margin-bottom:16px;display:none;line-height:1.5;
+}
+.msg.error{background:rgba(255,87,87,.1);border:1px solid rgba(255,87,87,.25);color:var(--red)}
+.msg.success{background:rgba(0,232,138,.08);border:1px solid rgba(0,232,138,.2);color:var(--green)}
+.msg.show{display:block}
+
+.footer-note{
+  text-align:center;font-size:11.5px;color:var(--t3);
+  margin-top:24px;line-height:1.6;
+}
+.footer-note a{color:var(--blue);text-decoration:none}
+
+.spinner{
+  display:inline-block;width:14px;height:14px;
+  border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+  border-radius:50%;animation:spin .6s linear infinite;
+  vertical-align:middle;margin-right:6px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.role-info{
+  background:var(--s2);border:1px solid var(--b1);border-radius:8px;
+  padding:12px 14px;margin-top:16px;font-size:12px;color:var(--t3);line-height:1.6;
+}
+.role-info strong{color:var(--t2)}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <div class="logo-mark">SF</div>
+    <div>
+      <div class="logo-text">StockFlow Pro</div>
+      <div class="logo-sub">Inventory & Asset Control</div>
+    </div>
+  </div>
+
+  <div class="page-title">Welcome back</div>
+  <div class="page-sub">Sign in to your workspace or create a new account</div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('login')">Sign In</button>
+    <button class="tab-btn" onclick="switchTab('register')">Create Account</button>
+  </div>
+
+  <!-- MESSAGE -->
+  <div class="msg" id="msg"></div>
+
+  <!-- LOGIN FORM -->
+  <div id="form-login">
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="login-email" placeholder="you@company.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-submit" id="btn-login" onclick="doLogin()">Sign In</button>
+
+    <div class="divider">or</div>
+
+    <button class="btn-submit" style="background:var(--s2);color:var(--t2);border:1px solid var(--b2);box-shadow:none" onclick="doGoogleLogin()">
+      Sign in with Google
+    </button>
+  </div>
+
+  <!-- REGISTER FORM -->
+  <div id="form-register" style="display:none">
+    <div class="form-group">
+      <label>Full Name</label>
+      <input type="text" id="reg-name" placeholder="Your full name">
+    </div>
+    <div class="form-group">
+      <label>Company / Workspace Name</label>
+      <input type="text" id="reg-company" placeholder="PT. Your Company">
+    </div>
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="reg-email" placeholder="you@company.com">
+    </div>
+    <div class="form-group">
+      <label>Password <span style="color:var(--t3);font-weight:400">(min. 6 karakter)</span></label>
+      <input type="password" id="reg-password" placeholder="••••••••">
+    </div>
+    <button class="btn-submit" id="btn-register" onclick="doRegister()">Create Account</button>
+
+    <div class="role-info">
+      <strong>Akun pertama = Admin otomatis.</strong><br>
+      Setelah login, kamu bisa invite tim dengan role Operator atau Viewer.
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Dengan masuk, kamu menyetujui<br>
+    <a href="#">Terms of Service</a> &amp; <a href="#">Privacy Policy</a>
+  </div>
+</div>
+
+<script>
+// ── SUPABASE INIT
+const SUPABASE_URL = 'https://osrtcishupybpvlcvoke.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zcnRjaXNodXB5YnB2bGN2b2tlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNzQzODIsImV4cCI6MjA5Mjg1MDM4Mn0.x3Wu0hW0eUbcXJQb7sg2zQD0hHqVVDSNNw0HkBgz74I';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── CEK JIKA SUDAH LOGIN → langsung ke app
+supabase.auth.getSession().then(({data:{session}})=>{
+  if(session) window.location.href = 'app.html';
+});
+
+// ── UI HELPERS
+function showMsg(text, type='error'){
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = `msg ${type} show`;
+}
+function hideMsg(){ document.getElementById('msg').className = 'msg'; }
+
+function setLoading(btnId, loading, text){
+  const btn = document.getElementById(btnId);
+  btn.disabled = loading;
+  btn.innerHTML = loading ? `<span class="spinner"></span> ${text}` : text;
+}
+
+function switchTab(tab){
+  hideMsg();
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register'));
+  });
+  document.getElementById('form-login').style.display = tab==='login' ? '' : 'none';
+  document.getElementById('form-register').style.display = tab==='register' ? '' : 'none';
+}
+
+// ── LOGIN
+async function doLogin(){
+  hideMsg();
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  if(!email || !password){ showMsg('Email dan password wajib diisi.'); return; }
+
+  setLoading('btn-login', true, 'Signing in…');
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if(error){
+    showMsg(error.message === 'Invalid login credentials'
+      ? 'Email atau password salah. Coba lagi.'
+      : error.message);
+    setLoading('btn-login', false, 'Sign In');
+    return;
+  }
+
+  showMsg('Login berhasil! Mengarahkan…', 'success');
+  setTimeout(()=>{ window.location.href = 'app.html'; }, 800);
+}
+
+// ── REGISTER
+async function doRegister(){
+  hideMsg();
+  const name    = document.getElementById('reg-name').value.trim();
+  const company = document.getElementById('reg-company').value.trim();
+  const email   = document.getElementById('reg-email').value.trim();
+  const password= document.getElementById('reg-password').value;
+
+  if(!name||!company||!email||!password){
+    showMsg('Semua field wajib diisi.');return;
+  }
+  if(password.length < 6){
+    showMsg('Password minimal 6 karakter.');return;
+  }
+
+  setLoading('btn-register', true, 'Membuat akun…');
+
+  // 1. Register user di Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email, password,
+    options: { data: { full_name: name } }
+  });
+
+  if(authError){
+    showMsg(authError.message);
+    setLoading('btn-register', false, 'Create Account');
+    return;
+  }
+
+  const userId = authData.user?.id;
+  if(!userId){
+    showMsg('Terjadi kesalahan, coba lagi.');
+    setLoading('btn-register', false, 'Create Account');
+    return;
+  }
+
+  // 2. Buat company baru
+  const { data: compData, error: compError } = await supabase
+    .from('companies')
+    .insert({ name: company, plan: 'free' })
+    .select()
+    .single();
+
+  if(compError){
+    showMsg('Gagal membuat workspace: ' + compError.message);
+    setLoading('btn-register', false, 'Create Account');
+    return;
+  }
+
+  // 3. Update profile dengan company_id dan role admin
+  const { error: profError } = await supabase
+    .from('profiles')
+    .update({ company_id: compData.id, full_name: name, role: 'admin' })
+    .eq('id', userId);
+
+  if(profError){
+    showMsg('Gagal setup profile: ' + profError.message);
+    setLoading('btn-register', false, 'Create Account');
+    return;
+  }
+
+  showMsg('✅ Akun berhasil dibuat! Silakan cek email untuk verifikasi, lalu login.', 'success');
+  setLoading('btn-register', false, 'Create Account');
+  setTimeout(()=>switchTab('login'), 3000);
+}
+
+// ── GOOGLE LOGIN
+async function doGoogleLogin(){
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + '/app.html' }
+  });
+  if(error) showMsg(error.message);
+}
+
+// ── ENTER KEY
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Enter') return;
+  const isLogin = document.getElementById('form-login').style.display !== 'none';
+  if(isLogin) doLogin();
+  else doRegister();
+});
+</script>
+</body>
+</html>
