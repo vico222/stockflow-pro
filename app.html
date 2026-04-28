@@ -285,6 +285,22 @@ body{
     </div>
     <div class="hdr-right">
       <div class="hbtn" onclick="loadAll()" id="refresh-btn" title="Refresh data">↻</div>
+      <!-- Currency Toggle + Exchange Rate -->
+      <div style="display:flex;align-items:center;border:1px solid var(--b2);border-radius:var(--rxs);overflow:hidden;height:33px">
+        <button id="cur-usd" onclick="setCurrency('USD')"
+          style="padding:0 11px;border:none;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;background:var(--blue);color:#fff;transition:all .14s;height:100%">USD</button>
+        <button id="cur-idr" onclick="setCurrency('IDR')"
+          style="padding:0 11px;border:none;border-left:1px solid var(--b2);font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--t2);transition:all .14s;height:100%">IDR</button>
+        <!-- Exchange rate input - only visible when IDR active -->
+        <div id="rate-wrap" style="display:none;align-items:center;border-left:1px solid var(--b2);padding:0 8px;height:100%">
+          <span style="font-size:10px;color:var(--t3);margin-right:4px">1 USD =</span>
+          <input id="rate-input" type="number"
+            style="width:72px;border:none;outline:none;background:transparent;font-family:var(--font);font-size:11px;font-weight:700;color:var(--yellow);padding:0;text-align:right"
+            onchange="updateRate(this.value)"
+            title="Klik untuk ubah kurs">
+          <span style="font-size:10px;color:var(--t3);margin-left:3px">IDR</span>
+        </div>
+      </div>
       <span class="role-badge rb-admin" id="role-badge">Admin</span>
     </div>
   </header>
@@ -407,7 +423,7 @@ body{
   <div class="mbody">
     <input type="hidden" id="edit-inv-id">
     <div class="frow">
-      <div class="fg"><label class="flabel">Part Number <span class="req">*</span></label><input class="fc" id="f-pn" type="text" placeholder="HF-2240-A" list="parts-dl"><datalist id="parts-dl"></datalist></div>
+      <div class="fg"><label class="flabel">Part Number <span class="req">*</span></label><input class="fc" id="f-pn" type="text" placeholder="HF-2240-A" list="parts-dl" oninput="onPNInput(this.value)"><datalist id="parts-dl"></datalist></div>
       <div class="fg"><label class="flabel">Part Name <span class="req">*</span></label><input class="fc" id="f-name" type="text" placeholder="Hydraulic Filter"></div>
     </div>
     <div class="frow">
@@ -741,6 +757,39 @@ function switchPTab(tab, targetId){
   document.getElementById('pt-sites').style.display = targetId==='pt-sites' ? '' : 'none';
 }
 
+function setCurrency(code){
+  CURRENCY.current = code;
+  localStorage.setItem('sf_currency', code);
+
+  // Update button styles
+  document.getElementById('cur-usd').style.background = code==='USD' ? 'var(--blue)' : 'var(--surface)';
+  document.getElementById('cur-usd').style.color = code==='USD' ? '#fff' : 'var(--t2)';
+  document.getElementById('cur-idr').style.background = code==='IDR' ? 'var(--blue)' : 'var(--surface)';
+  document.getElementById('cur-idr').style.color = code==='IDR' ? '#fff' : 'var(--t2)';
+
+  // Show/hide rate input
+  const rateWrap = document.getElementById('rate-wrap');
+  if(rateWrap){
+    rateWrap.style.display = code==='IDR' ? 'flex' : 'none';
+    if(code==='IDR'){
+      document.getElementById('rate-input').value = CURRENCY.rates.IDR.toLocaleString('id-ID');
+    }
+  }
+
+  renderDashboard();
+  renderInventory();
+  toast('s','Currency Changed',`Nilai ditampilkan dalam ${code}${code==='IDR'?' · Kurs: '+CURRENCY.rates.IDR.toLocaleString('id-ID'):''}. `);
+}
+
+function updateRate(val){
+  const rate = parseFloat(val.replace(/\./g,'').replace(',','.')) || 17200;
+  CURRENCY.rates.IDR = rate;
+  localStorage.setItem('sf_rate_idr', rate);
+  renderDashboard();
+  renderInventory();
+  toast('s','Kurs Diperbarui',`1 USD = Rp ${rate.toLocaleString('id-ID')}`);
+}
+
 // ════════════════════════════════════════════════════════
 // DASHBOARD RENDER
 // ════════════════════════════════════════════════════════
@@ -807,8 +856,8 @@ function renderInventory(data=null){
       <td style="font-weight:600">${item.part_name}</td>
       <td>${getSiteName(item.site_id)}</td>
       <td><span style="font-weight:800;font-size:13px;color:${st==='ready'?'var(--green)':st==='critical'?'var(--red)':'var(--yellow)'}">${item.quantity}</span><span style="color:var(--t3);font-size:11px"> / ${item.min_stock}</span></td>
-      <td class="mono">$${(item.unit_price||0).toFixed(2)}</td>
-      <td class="mono" style="color:var(--green)">$${val.toFixed(2)}</td>
+      <td class="mono">${CURRENCY.fmtFull(item.unit_price||0)}</td>
+      <td class="mono" style="color:var(--green)">${CURRENCY.fmtFull(val)}</td>
       <td>${statusPill(st)}</td>
       <td><div style="display:flex;gap:4px">
         <button class="btn btn-ghost btn-xs" onclick="editInv('${item.id}')">✏</button>
@@ -927,6 +976,45 @@ function renderUsers(){
 }
 
 // ════════════════════════════════════════════════════════
+// CURRENCY SYSTEM
+// ════════════════════════════════════════════════════════
+const CURRENCY = {
+  current: localStorage.getItem('sf_currency') || 'USD',
+  rates: { USD: 1, IDR: parseFloat(localStorage.getItem('sf_rate_idr')) || 17200 },
+  symbols: { USD: '$', IDR: 'Rp ' },
+
+  set(code){
+    this.current = code;
+    localStorage.setItem('sf_currency', code);
+    document.querySelectorAll('.currency-label').forEach(el=>el.textContent=this.symbols[code]);
+    renderDashboard();
+    renderInventory();
+  },
+  fmt(usdVal){
+    const v = usdVal * this.rates[this.current];
+    const sym = this.symbols[this.current];
+    if(this.current === 'IDR'){
+      if(v >= 1000000000) return sym+(v/1000000000).toFixed(1)+'M';
+      if(v >= 1000000) return sym+(v/1000000).toFixed(1)+'Jt';
+      if(v >= 1000) return sym+(v/1000).toFixed(0)+'K';
+      return sym+Math.round(v).toLocaleString('id-ID');
+    }
+    if(v>=1000000) return sym+(v/1000000).toFixed(2)+'M';
+    if(v>=1000) return sym+(v/1000).toFixed(1)+'K';
+    return sym+v.toFixed(0);
+  },
+  fmtFull(usdVal){
+    const v = usdVal * this.rates[this.current];
+    const sym = this.symbols[this.current];
+    if(this.current === 'IDR') return sym+Math.round(v).toLocaleString('id-ID');
+    return sym+v.toFixed(2);
+  }
+};
+
+// Override global fmt$ to use currency system
+function fmt$(v){ return CURRENCY.fmt(v); }
+
+// ════════════════════════════════════════════════════════
 // POPULATE SELECTS
 // ════════════════════════════════════════════════════════
 function populateSelects(){
@@ -955,6 +1043,20 @@ function onProjChange(){
   if(!el) return;
   const sites = pid ? STATE.sites.filter(s=>s.project_id===pid) : STATE.sites;
   el.innerHTML='<option value="">Select…</option>'+sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+function onPNInput(val){
+  // Auto-fill from master parts
+  const part = STATE.masterParts.find(p=>
+    p.part_number.toLowerCase() === val.toLowerCase()
+  );
+  if(part){
+    const nameEl = document.getElementById('f-name');
+    const priceEl = document.getElementById('f-price');
+    if(nameEl && !nameEl.value) nameEl.value = part.part_name;
+    if(priceEl && !priceEl.value) priceEl.value = part.default_price?.toFixed(2) || '';
+    toast('s','Auto-filled','Nama dan harga diisi dari Master Parts.');
+  }
 }
 
 // ════════════════════════════════════════════════════════
@@ -1247,6 +1349,10 @@ function animateProgressBars(){
 // ════════════════════════════════════════════════════════
 // START
 // ════════════════════════════════════════════════════════
+// Init currency buttons on load
+const savedCur = localStorage.getItem('sf_currency') || 'USD';
+if(savedCur === 'IDR') setCurrency('IDR');
+
 init();
 </script>
 </body>
