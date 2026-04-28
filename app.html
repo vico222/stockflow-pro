@@ -669,109 +669,15 @@ async function loadAll(){
   else nb.style.display = 'none';
 }
 
-// ════════════════════════════════════════════════════════
-// APP STATE
-// ════════════════════════════════════════════════════════
-let STATE = {
-  user: null, profile: null, company: null,
-  inventory: [], projects: [], sites: [], masterParts: [], transactions: [], users: []
-};
-
-// ════════════════════════════════════════════════════════
-// INIT — cek auth dulu
-// ════════════════════════════════════════════════════════
-async function init(){
-  const { data: { session } } = await sb.auth.getSession();
-  if(!session){
-    window.location.href = 'index.html';
-    return;
-  }
-  STATE.user = session.user;
-  await loadProfile();
-  await loadAll();
-  hideLoading();
-}
-
-async function loadProfile(){
-  const { data: profile } = await sb
-    .from('profiles')
-    .select('*')
-    .eq('id', STATE.user.id)
-    .maybeSingle();
-
-  STATE.profile = profile;
-
-  // Get company
-  if(profile?.company_id){
-    const { data: company } = await sb
-      .from('companies').select('*')
-      .eq('id', profile.company_id).maybeSingle();
-    STATE.company = company;
-    document.getElementById('hdr-company').textContent = company?.name || 'Workspace';
-  } else {
-    document.getElementById('hdr-company').textContent = 'Workspace';
-  }
-
-  const role = profile?.role || 'viewer';
-  const name = profile?.full_name || STATE.user.email?.split('@')[0] || 'User';
-
-  document.getElementById('ua-name').textContent = name;
-  document.getElementById('ua-init').textContent = name[0].toUpperCase();
-  document.getElementById('ua-role').textContent = role;
-
-  const rb = document.getElementById('role-badge');
-  rb.textContent = role.charAt(0).toUpperCase()+role.slice(1);
-  rb.className = `role-badge rb-${role}`;
-
-  if(role !== 'admin'){
-    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
-  }
-}
-
-async function loadAll(){
-  const cid = STATE.profile?.company_id;
-
-  // If no company_id yet, show empty state with option to add data
-  if(!cid){
-    hideLoading();
-    renderDashboard();
-    toast('i','Workspace Kosong','Belum ada company. Coba logout dan login ulang.');
-    return;
-  }
-
-  const [inv, proj, sites, parts, tx, users] = await Promise.all([
-    sb.from('site_inventory').select('*').eq('company_id',cid).order('quantity'),
-    sb.from('projects').select('*').eq('company_id',cid),
-    sb.from('sites').select('*').eq('company_id',cid),
-    sb.from('master_parts').select('*').eq('company_id',cid),
-    sb.from('transactions').select('*').eq('company_id',cid).order('created_at',{ascending:false}).limit(50),
-    sb.from('profiles').select('*').eq('company_id',cid)
-  ]);
-
-  STATE.inventory   = inv.data   || [];
-  STATE.projects    = proj.data  || [];
-  STATE.sites       = sites.data || [];
-  STATE.masterParts = parts.data || [];
-  STATE.transactions= tx.data    || [];
-  STATE.users       = users.data || [];
-
-  renderDashboard();
-  renderInventory();
-  renderProjects();
-  renderTransactions();
-  renderMasterParts();
-  renderUsers();
-  populateSelects();
-
-  const alerts = STATE.inventory.filter(i=>getStatus(i)!=='ready').length;
-  const nb = document.getElementById('nb-inv');
-  if(alerts > 0){ nb.textContent = alerts; nb.style.display = ''; }
-  else nb.style.display = 'none';
-}
+// duplicate removed
 
 function hideLoading(){
-  document.getElementById('loading-screen').style.display = 'none';
+  const el = document.getElementById('loading-screen');
+  if(el) el.style.display = 'none';
 }
+
+// Safety net — force hide loading after 5 seconds no matter what
+setTimeout(()=>{ hideLoading(); }, 5000);
 
 // ════════════════════════════════════════════════════════
 // UTILS
