@@ -1574,7 +1574,7 @@ function showPreview(){
       <td style="padding:7px 12px;border-bottom:1px solid var(--b1)">${r.siteName}</td>
       <td style="padding:7px 12px;border-bottom:1px solid var(--b1);font-weight:700">${r.qty}</td>
       <td style="padding:7px 12px;border-bottom:1px solid var(--b1)">${r.min}</td>
-      <td style="padding:7px 12px;border-bottom:1px solid var(--b1);font-family:var(--mono)">${r.price?'$'+r.price.toFixed(2):'—'}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid var(--b1);font-family:var(--mono)">${r.price?CURRENCY.fmtFull(r.price):'—'}</td>
       <td style="padding:7px 12px;border-bottom:1px solid var(--b1)">${icon} ${statusText}</td>
     </tr>`;
   }).join('');
