@@ -1503,6 +1503,9 @@ function parseCSV(text){
     return;
   }
 
+  const hasCurrency = headers.includes('currency');
+  const currentRate = CURRENCY.rates.IDR;
+
   parsedRows = lines.slice(1).filter(r=>r.join('').trim()).map((row, idx)=>{
     const get = col => row[headers.indexOf(col)]?.trim() || '';
     const pn = get('part_number');
@@ -1511,8 +1514,12 @@ function parseCSV(text){
     const siteName = get('site_name');
     const qty = parseInt(get('quantity'));
     const min = parseInt(get('min_stock'));
-    const price = parseFloat(get('unit_price')) || 0;
+    const rawPrice = parseFloat(get('unit_price')) || 0;
+    const currency = hasCurrency ? get('currency').toUpperCase() : 'USD';
     const model = get('model') || '';
+
+    // Convert price to USD if IDR
+    const priceUSD = currency === 'IDR' ? rawPrice / currentRate : rawPrice;
 
     const errors = [];
     if(!pn) errors.push('Part Number kosong');
@@ -1522,7 +1529,6 @@ function parseCSV(text){
     if(isNaN(qty)) errors.push('Qty tidak valid');
     if(isNaN(min)) errors.push('Min tidak valid');
 
-    // Check if exists
     const existInv = STATE.inventory.find(i=>
       i.part_number===pn &&
       STATE.sites.find(s=>s.id===i.site_id)?.name===siteName
@@ -1532,7 +1538,8 @@ function parseCSV(text){
       row: idx+2, pn, name, projName, siteName,
       qty: isNaN(qty)?0:qty,
       min: isNaN(min)?0:min,
-      price, model, errors,
+      price: priceUSD,
+      rawPrice, currency, model, errors,
       status: errors.length ? 'error' : existInv ? 'update' : 'new',
       existId: existInv?.id
     };
@@ -1574,7 +1581,10 @@ function showPreview(){
       <td style="padding:7px 12px;border-bottom:1px solid var(--b1)">${r.siteName}</td>
       <td style="padding:7px 12px;border-bottom:1px solid var(--b1);font-weight:700">${r.qty}</td>
       <td style="padding:7px 12px;border-bottom:1px solid var(--b1)">${r.min}</td>
-      <td style="padding:7px 12px;border-bottom:1px solid var(--b1);font-family:var(--mono)">${r.price?CURRENCY.fmtFull(r.price):'—'}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid var(--b1);font-family:var(--mono)">
+        ${r.rawPrice ? `${r.currency==='IDR'?'Rp':'$'}${r.rawPrice.toLocaleString('id-ID')}
+        ${r.currency==='IDR'?`<br><span style="font-size:10px;color:var(--t3)">→ $${r.price.toFixed(2)} USD</span>`:''}` : '—'}
+      </td>
       <td style="padding:7px 12px;border-bottom:1px solid var(--b1)">${icon} ${statusText}</td>
     </tr>`;
   }).join('');
@@ -1656,26 +1666,27 @@ function resetImport(){
 }
 
 function downloadTemplate(){
-  const csv = `part_number,part_name,project_name,site_name,quantity,min_stock,unit_price,model
-HF-001,Hydraulic Filter,TEST SITE A,trial 1,25,10,85.00,CAT 320D
-VB-002,V-Belt Drive,TEST SITE A,trial 1,15,5,42.00,Komatsu PC200
-AF-003,Air Filter,TEST SITE A,trial 1,8,4,120.00,Hitachi EX300`;
+  const csv = `part_number,part_name,project_name,site_name,quantity,min_stock,unit_price,currency,model
+HF-001,Hydraulic Filter,TEST SITE A,trial 1,25,10,85.00,USD,CAT 320D
+VB-002,V-Belt Drive,TEST SITE A,trial 1,15,5,42.00,USD,Komatsu PC200
+AF-003,Air Filter,TEST SITE A,trial 1,8,4,2500000,IDR,Hitachi EX300`;
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download = 'stockflow_import_template.csv';
   a.click();
-  toast('s','Template Downloaded','Buka di Excel, isi data, save as CSV, lalu upload.');
+  toast('s','Template Downloaded','Kolom currency: isi USD atau IDR. Sistem auto-convert ke USD.');
 }
 
 function loadSampleCSV(){
-  const sample = `part_number,part_name,project_name,site_name,quantity,min_stock,unit_price,model
-HF-001,Hydraulic Filter,TEST SITE A,trial 1,25,10,85.00,CAT 320D
-VB-002,V-Belt Drive,TEST SITE A,trial 1,15,5,42.00,Komatsu PC200
-AF-003,Air Filter,TEST SITE A,trial 1,8,4,120.00,Hitachi EX300
-FI-004,Fuel Injector,TEST SITE A,trial 1,3,8,680.00,CAT 390F
-OS-005,Oil Seal Kit,TEST SITE A,trial 1,20,6,95.00,Volvo EC480`;
+  const rate = CURRENCY.rates.IDR;
+  const sample = `part_number,part_name,project_name,site_name,quantity,min_stock,unit_price,currency,model
+HF-001,Hydraulic Filter,TEST SITE A,trial 1,25,10,85.00,USD,CAT 320D
+VB-002,V-Belt Drive,TEST SITE A,trial 1,15,5,42.00,USD,Komatsu PC200
+AF-003,Air Filter,TEST SITE A,trial 1,8,4,2500000,IDR,Hitachi EX300
+FI-004,Fuel Injector,TEST SITE A,trial 1,3,8,680.00,USD,CAT 390F
+OS-005,Oil Seal Kit,TEST SITE A,trial 1,20,6,1800000,IDR,Volvo EC480`;
   parseCSV(sample);
-  toast('i','Sample Data Loaded','5 baris sample siap dipreview. Klik Konfirmasi Import untuk menyimpan.');
+  toast('i','Sample Data Loaded','Mix USD & IDR — sistem otomatis convert ke USD.');
 }
 
 // Drag & drop
