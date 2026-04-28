@@ -550,6 +550,125 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// HARDCODED fallback — will be overridden by DB if available
+const DEFAULT_COMPANY_ID = '11111111-1111-1111-1111-111111111111';
+const DEFAULT_COMPANY_NAME = 'Workspace A';
+
+// ════════════════════════════════════════════════════════
+// APP STATE
+// ════════════════════════════════════════════════════════
+let STATE = {
+  user: null, profile: null, company: null,
+  inventory: [], projects: [], sites: [], masterParts: [], transactions: [], users: []
+};
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+async function init(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session){ window.location.href = 'index.html'; return; }
+  STATE.user = session.user;
+  await loadProfile();
+  await loadAll();
+  hideLoading();
+}
+
+async function loadProfile(){
+  // Try to get profile from DB
+  let role = 'admin'; // default to admin for now
+  let name = STATE.user.email?.split('@')[0] || 'User';
+  let companyId = DEFAULT_COMPANY_ID;
+  let companyName = DEFAULT_COMPANY_NAME;
+
+  try {
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('*')
+      .eq('id', STATE.user.id)
+      .maybeSingle();
+
+    if(!error && profile){
+      role = profile.role || 'admin';
+      name = profile.full_name || name;
+      companyId = profile.company_id || DEFAULT_COMPANY_ID;
+      STATE.profile = profile;
+    } else {
+      // Profile not readable due to RLS — use defaults
+      console.warn('Profile RLS issue, using defaults:', error?.message);
+      STATE.profile = {
+        id: STATE.user.id,
+        company_id: DEFAULT_COMPANY_ID,
+        role: 'admin',
+        full_name: name
+      };
+    }
+  } catch(e) {
+    console.warn('Profile error:', e);
+    STATE.profile = {
+      id: STATE.user.id,
+      company_id: DEFAULT_COMPANY_ID,
+      role: 'admin',
+      full_name: name
+    };
+  }
+
+  // Get company name
+  try {
+    const { data: company } = await sb
+      .from('companies').select('*')
+      .eq('id', companyId).maybeSingle();
+    if(company){
+      companyName = company.name;
+      STATE.company = company;
+    }
+  } catch(e) {}
+
+  // Update UI
+  document.getElementById('hdr-company').textContent = companyName;
+  document.getElementById('ua-name').textContent = name;
+  document.getElementById('ua-init').textContent = name[0].toUpperCase();
+  document.getElementById('ua-role').textContent = role;
+
+  const rb = document.getElementById('role-badge');
+  rb.textContent = role.charAt(0).toUpperCase()+role.slice(1);
+  rb.className = `role-badge rb-${role}`;
+
+  // Ensure profile always has company_id
+  STATE.profile.company_id = companyId;
+  STATE.profile.role = role;
+}
+
+async function loadAll(){
+  const cid = STATE.profile?.company_id || DEFAULT_COMPANY_ID;
+
+  const [inv, proj, sites, parts, tx] = await Promise.all([
+    sb.from('site_inventory').select('*').eq('company_id',cid).order('quantity'),
+    sb.from('projects').select('*').eq('company_id',cid),
+    sb.from('sites').select('*').eq('company_id',cid),
+    sb.from('master_parts').select('*').eq('company_id',cid),
+    sb.from('transactions').select('*').eq('company_id',cid).order('created_at',{ascending:false}).limit(50),
+  ]);
+
+  STATE.inventory   = inv.data   || [];
+  STATE.projects    = proj.data  || [];
+  STATE.sites       = sites.data || [];
+  STATE.masterParts = parts.data || [];
+  STATE.transactions= tx.data    || [];
+
+  renderDashboard();
+  renderInventory();
+  renderProjects();
+  renderTransactions();
+  renderMasterParts();
+  populateSelects();
+
+  const alerts = STATE.inventory.filter(i=>getStatus(i)!=='ready').length;
+  const nb = document.getElementById('nb-inv');
+  if(alerts > 0){ nb.textContent = alerts; nb.style.display = ''; }
+  else nb.style.display = 'none';
+}
+
 // ════════════════════════════════════════════════════════
 // APP STATE
 // ════════════════════════════════════════════════════════
@@ -574,34 +693,27 @@ async function init(){
 }
 
 async function loadProfile(){
-  // Use maybeSingle to avoid error if no row
-  const { data: profile, error: profErr } = await sb
+  const { data: profile } = await sb
     .from('profiles')
     .select('*')
     .eq('id', STATE.user.id)
     .maybeSingle();
 
-  if(profErr) console.error('Profile error:', profErr);
-
   STATE.profile = profile;
 
+  // Get company
   if(profile?.company_id){
     const { data: company } = await sb
-      .from('companies')
-      .select('*')
-      .eq('id', profile.company_id)
-      .maybeSingle();
+      .from('companies').select('*')
+      .eq('id', profile.company_id).maybeSingle();
     STATE.company = company;
     document.getElementById('hdr-company').textContent = company?.name || 'Workspace';
   } else {
-    document.getElementById('hdr-company').textContent = STATE.user.email || 'Workspace';
+    document.getElementById('hdr-company').textContent = 'Workspace';
   }
 
-  // Get role — fallback to user metadata if profile missing
-  const role = profile?.role || STATE.user.user_metadata?.role || 'viewer';
-  const name = profile?.full_name || STATE.user.user_metadata?.full_name || STATE.user.email?.split('@')[0] || 'User';
-
-  STATE.profile = { ...profile, role, full_name: name };
+  const role = profile?.role || 'viewer';
+  const name = profile?.full_name || STATE.user.email?.split('@')[0] || 'User';
 
   document.getElementById('ua-name').textContent = name;
   document.getElementById('ua-init').textContent = name[0].toUpperCase();
@@ -611,21 +723,21 @@ async function loadProfile(){
   rb.textContent = role.charAt(0).toUpperCase()+role.slice(1);
   rb.className = `role-badge rb-${role}`;
 
-  // Hide admin-only elements for non-admins
   if(role !== 'admin'){
     document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
   }
-
-  console.log('Profile loaded:', { role, name, company_id: profile?.company_id });
 }
 
 async function loadAll(){
-  if(!STATE.profile?.company_id){
-    toast('i','Setup Diperlukan','Belum ada company terhubung. Hubungi admin.');
+  const cid = STATE.profile?.company_id;
+
+  // If no company_id yet, show empty state with option to add data
+  if(!cid){
     hideLoading();
+    renderDashboard();
+    toast('i','Workspace Kosong','Belum ada company. Coba logout dan login ulang.');
     return;
   }
-  const cid = STATE.profile.company_id;
 
   const [inv, proj, sites, parts, tx, users] = await Promise.all([
     sb.from('site_inventory').select('*').eq('company_id',cid).order('quantity'),
@@ -651,7 +763,6 @@ async function loadAll(){
   renderUsers();
   populateSelects();
 
-  // Update badges
   const alerts = STATE.inventory.filter(i=>getStatus(i)!=='ready').length;
   const nb = document.getElementById('nb-inv');
   if(alerts > 0){ nb.textContent = alerts; nb.style.display = ''; }
