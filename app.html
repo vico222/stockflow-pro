@@ -259,6 +259,10 @@ body{
       <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8h8V6z" clip-rule="evenodd"/></svg>
       Master Parts
     </div>
+    <div class="ni" onclick="go('import',this)">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+      Bulk Import
+    </div>
     <div class="ni admin-only" onclick="go('users',this)">
       <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
       Users
@@ -414,6 +418,125 @@ body{
     </div>
     <div class="card au"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead><tbody id="users-tbody"></tbody></table></div></div>
   </div>
+
+  <!-- ════ BULK IMPORT PAGE ════ -->
+  <div class="content" id="pg-import" style="display:none">
+    <div class="ph au">
+      <div><div class="ph-lbl">Data Management</div><div class="ph-title">📥 Bulk Import — Inventory</div></div>
+      <div class="ph-actions">
+        <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">⬇ Download Template</button>
+      </div>
+    </div>
+
+    <!-- STEPS -->
+    <div style="display:flex;gap:0;margin-bottom:22px;border:1px solid var(--b1);border-radius:var(--rsm);overflow:hidden" class="au">
+      <div id="istep1" style="flex:1;display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bm);border-right:1px solid var(--b1)">
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+        <span style="font-size:12px;font-weight:600;color:var(--blue)">Upload File</span>
+      </div>
+      <div id="istep2" style="flex:1;display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface);border-right:1px solid var(--b1)">
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--s3);color:var(--t3);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0" id="step2num">2</div>
+        <span style="font-size:12px;font-weight:600;color:var(--t3)" id="step2lbl">Preview & Validasi</span>
+      </div>
+      <div id="istep3" style="flex:1;display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface)">
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--s3);color:var(--t3);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0" id="step3num">3</div>
+        <span style="font-size:12px;font-weight:600;color:var(--t3)" id="step3lbl">Selesai</span>
+      </div>
+    </div>
+
+    <!-- STEP 1: UPLOAD -->
+    <div id="import-s1" class="au">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">📄 Upload File CSV</div></div>
+          <div class="card-body">
+            <div id="drop-zone" onclick="document.getElementById('csv-file').click()"
+              style="border:2px dashed var(--b2);border-radius:var(--rsm);padding:36px;text-align:center;cursor:pointer;transition:all .2s">
+              <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleCSV(this)">
+              <div style="font-size:32px;margin-bottom:10px">📄</div>
+              <div style="font-size:13px;font-weight:700;margin-bottom:6px">Drop file CSV di sini</div>
+              <div style="font-size:12px;color:var(--t3);margin-bottom:14px">atau klik untuk pilih file</div>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();document.getElementById('csv-file').click()">Pilih File</button>
+            </div>
+            <div style="margin-top:14px;display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">⬇ Template CSV</button>
+              <button class="btn btn-ghost btn-sm" onclick="loadSampleCSV()">🎭 Coba Sample Data</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">📋 Format Template</div></div>
+          <div class="card-body">
+            <div style="font-size:12px;color:var(--t3);margin-bottom:12px">File CSV harus memiliki kolom berikut:</div>
+            <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+              <thead><tr>
+                <th style="padding:7px 10px;background:rgba(0,0,0,.15);border:1px solid var(--b1);text-align:left;color:var(--t3);font-size:10px;text-transform:uppercase">Kolom</th>
+                <th style="padding:7px 10px;background:rgba(0,0,0,.15);border:1px solid var(--b1);text-align:left;color:var(--t3);font-size:10px;text-transform:uppercase">Wajib</th>
+                <th style="padding:7px 10px;background:rgba(0,0,0,.15);border:1px solid var(--b1);text-align:left;color:var(--t3);font-size:10px;text-transform:uppercase">Contoh</th>
+              </tr></thead>
+              <tbody>
+                <tr><td style="padding:7px 10px;border:1px solid var(--b1);font-family:var(--mono);font-size:11px">part_number</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--red);font-weight:700;font-size:11px">Ya</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--t3);font-size:11px">HF-001</td></tr>
+                <tr><td style="padding:7px 10px;border:1px solid var(--b1);font-family:var(--mono);font-size:11px">part_name</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--red);font-weight:700;font-size:11px">Ya</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--t3);font-size:11px">Hydraulic Filter</td></tr>
+                <tr><td style="padding:7px 10px;border:1px solid var(--b1);font-family:var(--mono);font-size:11px">project_name</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--red);font-weight:700;font-size:11px">Ya</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--t3);font-size:11px">TEST SITE A</td></tr>
+                <tr><td style="padding:7px 10px;border:1px solid var(--b1);font-family:var(--mono);font-size:11px">site_name</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--red);font-weight:700;font-size:11px">Ya</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--t3);font-size:11px">trial 1</td></tr>
+                <tr><td style="padding:7px 10px;border:1px solid var(--b1);font-family:var(--mono);font-size:11px">quantity</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--red);font-weight:700;font-size:11px">Ya</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--t3);font-size:11px">25</td></tr>
+                <tr><td style="padding:7px 10px;border:1px solid var(--b1);font-family:var(--mono);font-size:11px">min_stock</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--red);font-weight:700;font-size:11px">Ya</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--t3);font-size:11px">10</td></tr>
+                <tr><td style="padding:7px 10px;border:1px solid var(--b1);font-family:var(--mono);font-size:11px">unit_price</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--t2);font-size:11px">Opsional</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--t3);font-size:11px">85.00</td></tr>
+                <tr><td style="padding:7px 10px;border:1px solid var(--b1);font-family:var(--mono);font-size:11px">model</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--t2);font-size:11px">Opsional</td><td style="padding:7px 10px;border:1px solid var(--b1);color:var(--t3);font-size:11px">CAT 320D</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: PREVIEW -->
+    <div id="import-s2" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-size:14px;font-weight:700">Preview Import</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:3px" id="import-summary">Menganalisis…</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="resetImport()">← Kembali</button>
+          <button class="btn btn-primary btn-sm" id="confirm-import-btn" onclick="confirmImport()">✅ Konfirmasi Import</button>
+        </div>
+      </div>
+      <!-- Legend -->
+      <div style="display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;font-size:11.5px"><div style="width:12px;height:12px;background:rgba(0,232,138,.15);border-radius:2px"></div><span>Baru (akan dibuat)</span></div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11.5px"><div style="width:12px;height:12px;background:rgba(77,139,255,.15);border-radius:2px"></div><span>Update (sudah ada)</span></div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11.5px"><div style="width:12px;height:12px;background:rgba(255,87,87,.15);border-radius:2px"></div><span>Error (akan dilewati)</span></div>
+      </div>
+      <div style="max-height:360px;overflow-y:auto;border:1px solid var(--b1);border-radius:var(--rsm)">
+        <table style="width:100%;border-collapse:collapse;font-size:11.5px" id="preview-table">
+          <thead><tr style="position:sticky;top:0;background:var(--bg)">
+            <th style="padding:8px 12px;border-bottom:1px solid var(--b1);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">#</th>
+            <th style="padding:8px 12px;border-bottom:1px solid var(--b1);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">Part No.</th>
+            <th style="padding:8px 12px;border-bottom:1px solid var(--b1);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">Nama</th>
+            <th style="padding:8px 12px;border-bottom:1px solid var(--b1);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">Project</th>
+            <th style="padding:8px 12px;border-bottom:1px solid var(--b1);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">Site</th>
+            <th style="padding:8px 12px;border-bottom:1px solid var(--b1);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">Qty</th>
+            <th style="padding:8px 12px;border-bottom:1px solid var(--b1);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">Min</th>
+            <th style="padding:8px 12px;border-bottom:1px solid var(--b1);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">Harga</th>
+            <th style="padding:8px 12px;border-bottom:1px solid var(--b1);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">Status</th>
+          </tr></thead>
+          <tbody id="preview-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STEP 3: SUCCESS -->
+    <div id="import-s3" style="display:none">
+      <div class="empty">
+        <div class="empty-icon" style="background:var(--gm);font-size:28px">✅</div>
+        <div class="empty-title">Import Berhasil!</div>
+        <div class="empty-desc" id="import-result">Data berhasil diimport.</div>
+        <button class="btn btn-primary" onclick="go('inventory',document.querySelectorAll('.ni')[1])">Lihat Inventory →</button>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /main -->
 
 <!-- ════ MODALS ════ -->
@@ -739,7 +862,7 @@ document.querySelectorAll('.modal-bg').forEach(el=>el.addEventListener('click',e
 // ════════════════════════════════════════════════════════
 // NAVIGATION
 // ════════════════════════════════════════════════════════
-const pageMap={dashboard:'Command Center',inventory:'Inventory',projects:'Projects & Sites',transactions:'Transactions',masterparts:'Master Parts',users:'Team Members'};
+const pageMap={dashboard:'Command Center',inventory:'Inventory',projects:'Projects & Sites',transactions:'Transactions',masterparts:'Master Parts',users:'Team Members',import:'Bulk Import'};
 function go(page, el){
   document.querySelectorAll('[id^="pg-"]').forEach(p=>p.style.display='none');
   const pg = document.getElementById('pg-'+page);
@@ -1352,8 +1475,221 @@ function animateProgressBars(){
 }
 
 // ════════════════════════════════════════════════════════
-// START
+// BULK IMPORT
 // ════════════════════════════════════════════════════════
+let parsedRows = [];
+
+function handleCSV(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(!file.name.endsWith('.csv')){toast('e','Format Salah','Hanya file .csv yang didukung.');return;}
+  toast('i','Membaca File',`Memproses ${file.name}…`);
+  const reader = new FileReader();
+  reader.onload = e => {
+    parseCSV(e.target.result);
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV(text){
+  const lines = text.trim().split('\n').map(l=>l.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+  if(lines.length < 2){ toast('e','File Kosong','File tidak memiliki data.');return; }
+
+  const headers = lines[0].map(h=>h.toLowerCase().trim());
+  const requiredCols = ['part_number','part_name','project_name','site_name','quantity','min_stock'];
+  const missing = requiredCols.filter(c=>!headers.includes(c));
+  if(missing.length > 0){
+    toast('e','Kolom Tidak Lengkap',`Kolom berikut tidak ditemukan: ${missing.join(', ')}`);
+    return;
+  }
+
+  parsedRows = lines.slice(1).filter(r=>r.join('').trim()).map((row, idx)=>{
+    const get = col => row[headers.indexOf(col)]?.trim() || '';
+    const pn = get('part_number');
+    const name = get('part_name');
+    const projName = get('project_name');
+    const siteName = get('site_name');
+    const qty = parseInt(get('quantity'));
+    const min = parseInt(get('min_stock'));
+    const price = parseFloat(get('unit_price')) || 0;
+    const model = get('model') || '';
+
+    const errors = [];
+    if(!pn) errors.push('Part Number kosong');
+    if(!name) errors.push('Nama kosong');
+    if(!projName) errors.push('Project kosong');
+    if(!siteName) errors.push('Site kosong');
+    if(isNaN(qty)) errors.push('Qty tidak valid');
+    if(isNaN(min)) errors.push('Min tidak valid');
+
+    // Check if exists
+    const existInv = STATE.inventory.find(i=>
+      i.part_number===pn &&
+      STATE.sites.find(s=>s.id===i.site_id)?.name===siteName
+    );
+
+    return {
+      row: idx+2, pn, name, projName, siteName,
+      qty: isNaN(qty)?0:qty,
+      min: isNaN(min)?0:min,
+      price, model, errors,
+      status: errors.length ? 'error' : existInv ? 'update' : 'new',
+      existId: existInv?.id
+    };
+  });
+
+  showPreview();
+}
+
+function showPreview(){
+  document.getElementById('import-s1').style.display='none';
+  document.getElementById('import-s2').style.display='';
+  document.getElementById('import-s3').style.display='none';
+
+  // Activate step 2
+  document.getElementById('step2num').style.background='var(--blue)';
+  document.getElementById('step2num').style.color='#fff';
+  document.getElementById('step2lbl').style.color='var(--blue)';
+
+  const newCount = parsedRows.filter(r=>r.status==='new').length;
+  const updCount = parsedRows.filter(r=>r.status==='update').length;
+  const errCount = parsedRows.filter(r=>r.status==='error').length;
+
+  document.getElementById('import-summary').textContent =
+    `${parsedRows.length} baris ditemukan · ${newCount} baru · ${updCount} update · ${errCount} error (dilewati)`;
+
+  const confirmBtn = document.getElementById('confirm-import-btn');
+  confirmBtn.disabled = (newCount + updCount) === 0;
+
+  const tb = document.getElementById('preview-tbody');
+  tb.innerHTML = parsedRows.map(r=>{
+    const bg = r.status==='error'?'rgba(255,87,87,.06)':r.status==='update'?'rgba(77,139,255,.06)':'rgba(0,232,138,.04)';
+    const icon = r.status==='error'?'❌':r.status==='update'?'🔄':'✅';
+    const statusText = r.status==='error'?`<span style="color:var(--red);font-size:10px">${r.errors[0]}</span>`:r.status==='update'?`<span style="color:var(--blue);font-size:10px">Update</span>`:`<span style="color:var(--green);font-size:10px">Baru</span>`;
+    return `<tr style="background:${bg}">
+      <td style="padding:7px 12px;border-bottom:1px solid var(--b1);color:var(--t3)">${r.row}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid var(--b1);font-family:var(--mono)">${r.pn||'<em style="color:var(--red)">kosong</em>'}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid var(--b1)">${r.name}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid var(--b1)">${r.projName}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid var(--b1)">${r.siteName}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid var(--b1);font-weight:700">${r.qty}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid var(--b1)">${r.min}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid var(--b1);font-family:var(--mono)">${r.price?'$'+r.price.toFixed(2):'—'}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid var(--b1)">${icon} ${statusText}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function confirmImport(){
+  const cid = STATE.profile?.company_id;
+  const btn = document.getElementById('confirm-import-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Mengimport…';
+
+  let created=0, updated=0, errors=0;
+  const validRows = parsedRows.filter(r=>r.status!=='error');
+
+  for(const r of validRows){
+    // Find or match project
+    let proj = STATE.projects.find(p=>p.name.toLowerCase()===r.projName.toLowerCase());
+    if(!proj){
+      const {data} = await sb.from('projects').insert({company_id:cid,name:r.projName,industry:'Unknown',readiness_target:90}).select().single();
+      proj = data;
+      if(proj) STATE.projects.push(proj);
+    }
+    if(!proj){ errors++; continue; }
+
+    // Find or match site
+    let site = STATE.sites.find(s=>s.name.toLowerCase()===r.siteName.toLowerCase()&&s.project_id===proj.id);
+    if(!site){
+      const {data} = await sb.from('sites').insert({company_id:cid,project_id:proj.id,name:r.siteName,industry:'Unknown'}).select().single();
+      site = data;
+      if(site) STATE.sites.push(site);
+    }
+    if(!site){ errors++; continue; }
+
+    // Auto-add to master parts
+    const existPart = STATE.masterParts.find(p=>p.part_number===r.pn);
+    if(!existPart){
+      const {data} = await sb.from('master_parts').insert({company_id:cid,part_number:r.pn,part_name:r.name,default_price:r.price}).select().single();
+      if(data) STATE.masterParts.push(data);
+    }
+
+    const payload = {company_id:cid,project_id:proj.id,site_id:site.id,part_number:r.pn,part_name:r.name,quantity:r.qty,min_stock:r.min,max_stock:r.min*3,unit_price:r.price,model_equipment:r.model||null};
+
+    if(r.status==='update' && r.existId){
+      const {error} = await sb.from('site_inventory').update({quantity:r.qty,min_stock:r.min,unit_price:r.price}).eq('id',r.existId);
+      if(!error) updated++; else errors++;
+    } else {
+      const {error} = await sb.from('site_inventory').insert(payload);
+      if(!error) created++; else errors++;
+    }
+  }
+
+  // Show success
+  document.getElementById('import-s2').style.display='none';
+  document.getElementById('import-s3').style.display='';
+  document.getElementById('step3num').style.background='var(--green)';
+  document.getElementById('step3num').style.color='#fff';
+  document.getElementById('step3lbl').style.color='var(--green)';
+  document.getElementById('import-result').textContent =
+    `${created} item dibuat · ${updated} item diupdate · ${errors} baris gagal.`;
+
+  await loadAll();
+  toast('s','Import Selesai',`${created+updated} item berhasil diimport ke database!`);
+}
+
+function resetImport(){
+  parsedRows=[];
+  document.getElementById('csv-file').value='';
+  document.getElementById('import-s1').style.display='';
+  document.getElementById('import-s2').style.display='none';
+  document.getElementById('import-s3').style.display='none';
+  ['step2num','step3num'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.style.background='var(--s3)';el.style.color='var(--t3)';}
+  });
+  ['step2lbl','step3lbl'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.color='var(--t3)';
+  });
+}
+
+function downloadTemplate(){
+  const csv = `part_number,part_name,project_name,site_name,quantity,min_stock,unit_price,model
+HF-001,Hydraulic Filter,TEST SITE A,trial 1,25,10,85.00,CAT 320D
+VB-002,V-Belt Drive,TEST SITE A,trial 1,15,5,42.00,Komatsu PC200
+AF-003,Air Filter,TEST SITE A,trial 1,8,4,120.00,Hitachi EX300`;
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = 'stockflow_import_template.csv';
+  a.click();
+  toast('s','Template Downloaded','Buka di Excel, isi data, save as CSV, lalu upload.');
+}
+
+function loadSampleCSV(){
+  const sample = `part_number,part_name,project_name,site_name,quantity,min_stock,unit_price,model
+HF-001,Hydraulic Filter,TEST SITE A,trial 1,25,10,85.00,CAT 320D
+VB-002,V-Belt Drive,TEST SITE A,trial 1,15,5,42.00,Komatsu PC200
+AF-003,Air Filter,TEST SITE A,trial 1,8,4,120.00,Hitachi EX300
+FI-004,Fuel Injector,TEST SITE A,trial 1,3,8,680.00,CAT 390F
+OS-005,Oil Seal Kit,TEST SITE A,trial 1,20,6,95.00,Volvo EC480`;
+  parseCSV(sample);
+  toast('i','Sample Data Loaded','5 baris sample siap dipreview. Klik Konfirmasi Import untuk menyimpan.');
+}
+
+// Drag & drop
+document.addEventListener('DOMContentLoaded',()=>{
+  const dz = document.getElementById('drop-zone');
+  if(!dz) return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.style.borderColor='var(--blue)';dz.style.background='var(--bs)';});
+  dz.addEventListener('dragleave',()=>{dz.style.borderColor='var(--b2)';dz.style.background='';});
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();dz.style.borderColor='var(--b2)';dz.style.background='';
+    const f=e.dataTransfer.files[0];
+    if(f){const inp=document.getElementById('csv-file');const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;handleCSV(inp);}
+  });
+});
 // Init currency buttons on load
 const savedCur = localStorage.getItem('sf_currency') || 'USD';
 if(savedCur === 'IDR') setCurrency('IDR');
