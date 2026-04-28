@@ -779,15 +779,19 @@ function setCurrency(code){
 
   renderDashboard();
   renderInventory();
+  renderTransactions();
+  renderMasterParts();
   toast('s','Currency Changed',`Nilai ditampilkan dalam ${code}${code==='IDR'?' · Kurs: '+CURRENCY.rates.IDR.toLocaleString('id-ID'):''}. `);
 }
 
 function updateRate(val){
-  const rate = parseFloat(val.replace(/\./g,'').replace(',','.')) || 17200;
+  const rate = parseFloat(val.toString().replace(/\./g,'').replace(',','.')) || 17200;
   CURRENCY.rates.IDR = rate;
   localStorage.setItem('sf_rate_idr', rate);
   renderDashboard();
   renderInventory();
+  renderTransactions();
+  renderMasterParts();
   toast('s','Kurs Diperbarui',`1 USD = Rp ${rate.toLocaleString('id-ID')}`);
 }
 
@@ -938,7 +942,7 @@ function renderTransactions(){
     <td style="font-weight:600">${t.part_name}</td>
     <td>${getSiteName(t.site_id)}</td>
     <td style="font-weight:700">${t.quantity}</td>
-    <td class="mono" style="color:var(--green)">$${(t.total_value||0).toFixed(2)}</td>
+    <td class="mono" style="color:var(--green)">${CURRENCY.fmtFull(t.total_value||0)}</td>
     <td class="mono">${t.gi_number||'—'}</td>
     <td style="color:var(--t3)">${t.requester||'—'}</td>
   </tr>`).join('');
@@ -956,7 +960,7 @@ function renderMasterParts(){
   tb.innerHTML = STATE.masterParts.map(p=>`<tr>
     <td class="mono" style="font-weight:700">${p.part_number}</td>
     <td style="font-weight:600">${p.part_name}</td>
-    <td class="mono">$${(p.default_price||0).toFixed(2)}</td>
+    <td class="mono">${CURRENCY.fmtFull(p.default_price||0)}</td>
     <td style="color:var(--t2)">${p.category||'—'}</td>
     <td class="admin-only"><button class="btn btn-red btn-xs" onclick="deletePart('${p.id}')">🗑</button></td>
   </tr>`).join('');
