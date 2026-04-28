@@ -574,22 +574,39 @@ async function init(){
 }
 
 async function loadProfile(){
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', STATE.user.id).single();
+  // Use maybeSingle to avoid error if no row
+  const { data: profile, error: profErr } = await sb
+    .from('profiles')
+    .select('*')
+    .eq('id', STATE.user.id)
+    .maybeSingle();
+
+  if(profErr) console.error('Profile error:', profErr);
+
   STATE.profile = profile;
 
   if(profile?.company_id){
-    const { data: company } = await sb.from('companies').select('*').eq('id', profile.company_id).single();
+    const { data: company } = await sb
+      .from('companies')
+      .select('*')
+      .eq('id', profile.company_id)
+      .maybeSingle();
     STATE.company = company;
     document.getElementById('hdr-company').textContent = company?.name || 'Workspace';
+  } else {
+    document.getElementById('hdr-company').textContent = STATE.user.email || 'Workspace';
   }
 
-  // Update UI
-  const name = profile?.full_name || STATE.user.email?.split('@')[0] || 'User';
+  // Get role — fallback to user metadata if profile missing
+  const role = profile?.role || STATE.user.user_metadata?.role || 'viewer';
+  const name = profile?.full_name || STATE.user.user_metadata?.full_name || STATE.user.email?.split('@')[0] || 'User';
+
+  STATE.profile = { ...profile, role, full_name: name };
+
   document.getElementById('ua-name').textContent = name;
   document.getElementById('ua-init').textContent = name[0].toUpperCase();
-  document.getElementById('ua-role').textContent = profile?.role || 'viewer';
+  document.getElementById('ua-role').textContent = role;
 
-  const role = profile?.role || 'viewer';
   const rb = document.getElementById('role-badge');
   rb.textContent = role.charAt(0).toUpperCase()+role.slice(1);
   rb.className = `role-badge rb-${role}`;
@@ -598,6 +615,8 @@ async function loadProfile(){
   if(role !== 'admin'){
     document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
   }
+
+  console.log('Profile loaded:', { role, name, company_id: profile?.company_id });
 }
 
 async function loadAll(){
