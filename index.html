@@ -277,7 +277,21 @@ async function doRegister(){
     return;
   }
 
-  // 2. Buat company baru
+  // 2. Buat company baru — pakai upsert dengan anon key setelah login dulu
+  const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    email, password
+  });
+
+  if(signInError){
+    // User created but can't sign in yet (email not confirmed)
+    // Store company name in metadata for later
+    showMsg('✅ Akun dibuat! Silakan cek email untuk verifikasi, lalu login untuk setup workspace.', 'success');
+    setLoading('btn-register', false, 'Create Account');
+    setTimeout(()=>switchTab('login'), 3000);
+    return;
+  }
+
+  // 2. Buat company baru setelah login berhasil
   const { data: compData, error: compError } = await supabase
     .from('companies')
     .insert({ name: company, plan: 'free' })
@@ -294,7 +308,7 @@ async function doRegister(){
   const { error: profError } = await supabase
     .from('profiles')
     .update({ company_id: compData.id, full_name: name, role: 'admin' })
-    .eq('id', userId);
+    .eq('id', signInData.user.id);
 
   if(profError){
     showMsg('Gagal setup profile: ' + profError.message);
@@ -302,9 +316,8 @@ async function doRegister(){
     return;
   }
 
-  showMsg('✅ Akun berhasil dibuat! Silakan cek email untuk verifikasi, lalu login.', 'success');
-  setLoading('btn-register', false, 'Create Account');
-  setTimeout(()=>switchTab('login'), 3000);
+  showMsg('✅ Akun & workspace berhasil dibuat! Mengarahkan ke dashboard…', 'success');
+  setTimeout(()=>{ window.location.href = 'app.html'; }, 1000);
 }
 
 // ── GOOGLE LOGIN
