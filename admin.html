@@ -305,7 +305,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
   </div>
   <div class="mfoot">
     <button class="btn btn-ghost" onclick="closeModal('m-addClient')">Batal</button>
-    <button class="btn btn-primary" id="nc-btn" onclick="createClient()">✅ Buat Akun Client</button>
+    <button class="btn btn-primary" id="nc-btn" onclick="addNewClient()">✅ Buat Akun Client</button>
   </div>
 </div></div>
 
@@ -579,7 +579,7 @@ async function savePlan(){
 // ════════════════════════════════════════
 // CREATE CLIENT
 // ════════════════════════════════════════
-async function createClient(){
+async function addNewClient(){
   const company = document.getElementById('nc-company').value.trim();
   const name = document.getElementById('nc-name').value.trim();
   const email = document.getElementById('nc-email').value.trim();
