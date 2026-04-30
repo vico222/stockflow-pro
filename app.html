@@ -277,6 +277,10 @@ body{
       </div>
       <button class="btn-logout" onclick="doLogout()" title="Logout">⏻</button>
     </div>
+    <div style="margin-top:8px;padding:7px 12px;background:var(--s2);border-radius:var(--rxs);display:flex;align-items:center;justify-content:space-between;border:1px solid var(--b1)">
+      <span style="font-size:10px;color:var(--t3)">Plan aktif</span>
+      <span style="font-size:11px;font-weight:700" id="plan-indicator">—</span>
+    </div>
   </div>
 </aside>
 
@@ -843,6 +847,7 @@ async function loadAll(){
   renderTransactions();
   renderMasterParts();
   populateSelects();
+  enforcePlanUI();
 
   const alerts = STATE.inventory.filter(i=>getStatus(i)!=='ready').length;
   const nb = document.getElementById('nb-inv');
@@ -1184,7 +1189,89 @@ const CURRENCY = {
 function fmt$(v){ return CURRENCY.fmt(v); }
 
 // ════════════════════════════════════════════════════════
-// POPULATE SELECTS
+// PLAN ENFORCEMENT
+// ════════════════════════════════════════════════════════
+const PLAN_LIMITS = {
+  free:       { projects: 2, sites: 3, bulkImport: false, waAlert: false, export: false },
+  basic:      { projects: 2, sites: 3, bulkImport: false, waAlert: false, export: false },
+  pro:        { projects: 999, sites: 999, bulkImport: true, waAlert: true, export: true },
+  enterprise: { projects: 999, sites: 999, bulkImport: true, waAlert: true, export: true }
+};
+
+function getPlan(){ return STATE.company?.plan || 'free'; }
+function getPlanLimits(){ return PLAN_LIMITS[getPlan()] || PLAN_LIMITS.free; }
+
+function checkPlanLimit(feature){
+  const limits = getPlanLimits();
+  const plan = getPlan();
+
+  if(feature === 'project'){
+    if(STATE.projects.length >= limits.projects){
+      showUpgradePrompt(`Plan ${plan.toUpperCase()} hanya mendukung max ${limits.projects} project.`, 'project');
+      return false;
+    }
+  }
+  if(feature === 'site'){
+    if(STATE.sites.length >= limits.sites){
+      showUpgradePrompt(`Plan ${plan.toUpperCase()} hanya mendukung max ${limits.sites} site.`, 'site');
+      return false;
+    }
+  }
+  if(feature === 'bulkImport' && !limits.bulkImport){
+    showUpgradePrompt('Bulk Import tersedia di plan Pro & Enterprise.', 'bulkImport');
+    return false;
+  }
+  if(feature === 'waAlert' && !limits.waAlert){
+    showUpgradePrompt('WhatsApp Alert tersedia di plan Pro & Enterprise.', 'waAlert');
+    return false;
+  }
+  if(feature === 'export' && !limits.export){
+    showUpgradePrompt('Export CSV tersedia di plan Pro & Enterprise.', 'export');
+    return false;
+  }
+  return true;
+}
+
+function showUpgradePrompt(reason, feature){
+  const plan = getPlan();
+  const msg = `🔒 Fitur Terkunci\n\n${reason}\n\nUpgrade ke Pro (Rp 2.000.000/bulan) untuk akses penuh.\n\nHubungi VAHD untuk upgrade.`;
+  toast('e','Plan Limit', reason + ' Upgrade ke Pro untuk akses penuh.');
+}
+
+function enforcePlanUI(){
+  const limits = getPlanLimits();
+  const plan = getPlan();
+
+  // Show plan badge in sidebar
+  const planColors = { free:'var(--t3)', basic:'var(--blue)', pro:'var(--green)', enterprise:'var(--gold)' };
+  const planEl = document.getElementById('plan-indicator');
+  if(planEl){
+    planEl.textContent = plan.toUpperCase();
+    planEl.style.color = planColors[plan];
+  }
+
+  // Hide bulk import for free/basic
+  const bulkNav = document.querySelector('.ni[onclick*="import"]');
+  if(bulkNav){
+    if(!limits.bulkImport){
+      bulkNav.style.opacity = '.4';
+      bulkNav.title = 'Upgrade ke Pro untuk akses Bulk Import';
+      bulkNav.onclick = (e)=>{ e.stopPropagation(); showUpgradePrompt('Bulk Import tersedia di plan Pro & Enterprise.'); };
+    }
+  }
+
+  // Hide WA alert button for free/basic
+  const waBtn = document.querySelector('button[onclick*="openWAModal"]');
+  if(waBtn && !limits.waAlert){
+    waBtn.style.opacity = '.4';
+    waBtn.title = 'Upgrade ke Pro untuk WA Alert';
+    waBtn.onclick = ()=>showUpgradePrompt('WhatsApp Alert tersedia di plan Pro & Enterprise.');
+  }
+
+  // Show plan info in sidebar bottom
+  const userRole = document.getElementById('ua-role');
+  if(userRole) userRole.textContent = `${STATE.profile?.role || 'viewer'} · ${plan.toUpperCase()}`;
+}
 // ════════════════════════════════════════════════════════
 function populateSelects(){
   const projOpts = '<option value="">Select…</option>'+STATE.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
@@ -1325,6 +1412,7 @@ async function deleteInv(id){
 }
 
 async function saveProj(){
+  if(!checkPlanLimit('project')) return;
   const cid = STATE.profile?.company_id;
   const {error} = await sb.from('projects').insert({
     company_id:cid, name:document.getElementById('p-name').value.trim(),
@@ -1352,6 +1440,7 @@ async function deleteProj(id){
 }
 
 async function saveSite(){
+  if(!checkPlanLimit('site')) return;
   const cid = STATE.profile?.company_id;
   const {error}=await sb.from('sites').insert({
     company_id:cid,
@@ -1492,6 +1581,7 @@ _Sent via StockFlow Pro_`;
 // EXPORT CSV
 // ════════════════════════════════════════════════════════
 function exportCSV(){
+  if(!checkPlanLimit('export')) return;
   const headers='Part Number,Part Name,Site,Project,Quantity,Min Stock,Unit Price,Total Value,Status';
   const rows=STATE.inventory.map(i=>`"${i.part_number}","${i.part_name}","${getSiteName(i.site_id)}","${getProjName(i.project_id)}",${i.quantity},${i.min_stock},${i.unit_price||0},${((i.quantity||0)*(i.unit_price||0)).toFixed(2)},"${getStatus(i)}"`);
   const csv=[headers,...rows].join('\n');
