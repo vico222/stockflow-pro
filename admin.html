@@ -355,8 +355,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100
 const SUPABASE_URL = 'https://osrtcishupybpvlcvoke.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zcnRjaXNodXB5YnB2bGN2b2tlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNzQzODIsImV4cCI6MjA5Mjg1MDM4Mn0.x3Wu0hW0eUbcXJQb7sg2zQD0hHqVVDSNNw0HkBgz74I';
 const SUPER_ADMIN_EMAIL = 'victor.nugrahadi@gmail.com';
-const { createClient } = window.supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const { createClient: sbCreateClient } = window.supabase;
+const sb = sbCreateClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const PLAN_PRICES = { free: 0, basic: 750000, pro: 2000000, enterprise: 5000000 };
 const PLAN_FEATURES = {
