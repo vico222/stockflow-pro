@@ -1247,7 +1247,9 @@ function openAddInvModal(){
   ['f-pn','f-name','f-qty','f-min','f-max','f-price','f-model'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
-  syncPriceCurrency();
+  // Set currency selector to match current app currency
+  const curEl = document.getElementById('f-price-currency');
+  if(curEl){ curEl.value = CURRENCY.current; updatePriceLabel(); }
   openModal('m-addInv');
 }
 
