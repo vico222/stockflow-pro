@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockFlow Pro — Admin Panel</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0e14;--surface:#171b27;--s2:#1e2235;--s3:#252b40;
+  --b1:rgba(255,255,255,.06);--b2:rgba(255,255,255,.11);
+  --t1:#f0f2f8;--t2:#8892b0;--t3:#4a5270;
+  --green:#00e88a;--red:#ff5757;--blue:#4d8bff;--yellow:#fbbf24;--gold:#f59e0b;
+  --font:'Sora',sans-serif;--r:12px;--rsm:8px;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100vh;padding:0;font-size:14px}
+
+/* HEADER */
+.hdr{background:var(--surface);border-bottom:1px solid var(--b1);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(20px)}
+.hdr-brand{display:flex;align-items:center;gap:12px}
+.hdr-logo{width:36px;height:36px;background:linear-gradient(135deg,var(--blue),#6366f1);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff}
+.hdr-title{font-size:15px;font-weight:700}
+.hdr-sub{font-size:10px;color:var(--red);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:12px}
+.admin-badge{background:linear-gradient(135deg,var(--red),#e03333);color:#fff;font-size:10px;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+
+/* CONTENT */
+.content{max-width:1200px;margin:0 auto;padding:32px}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.stat{background:var(--surface);border:1px solid var(--b1);border-radius:var(--r);padding:20px 22px;position:relative;overflow:hidden}
+.stat-bar{position:absolute;top:0;left:0;right:0;height:3px}
+.stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);font-weight:600;margin-bottom:10px}
+.stat-val{font-size:32px;font-weight:800;letter-spacing:-1.5px;line-height:1;margin-bottom:6px}
+.stat-meta{font-size:11px;color:var(--t3)}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;margin-bottom:20px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--b1)}
+.card-title{font-size:13px;font-weight:700}
+.card-sub{font-size:10.5px;color:var(--t3);margin-top:2px}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);font-weight:600;padding:10px 16px;text-align:left;background:rgba(0,0,0,.12);border-bottom:1px solid var(--b1)}
+.tbl td{padding:14px 16px;border-bottom:1px solid var(--b1);font-size:12.5px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:var(--s2)}
+
+/* PLAN BADGES */
+.plan-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.plan-free{background:var(--s3);color:var(--t2);border:1px solid var(--b2)}
+.plan-basic{background:rgba(77,139,255,.15);color:var(--blue);border:1px solid rgba(77,139,255,.25)}
+.plan-pro{background:rgba(0,232,138,.12);color:var(--green);border:1px solid rgba(0,232,138,.2)}
+.plan-enterprise{background:rgba(245,158,11,.15);color:var(--gold);border:1px solid rgba(245,158,11,.25)}
+
+/* STATUS */
+.status-active{color:var(--green);font-weight:700;font-size:11px}
+.status-expired{color:var(--red);font-weight:700;font-size:11px}
+.status-trial{color:var(--yellow);font-weight:700;font-size:11px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--rsm);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:#2563eb}
+.btn-ghost{background:var(--s2);color:var(--t2);border-color:var(--b2)}
+.btn-ghost:hover{color:var(--t1)}
+.btn-green{background:rgba(0,232,138,.15);color:var(--green);border-color:rgba(0,232,138,.25)}
+.btn-red{background:rgba(255,87,87,.12);color:var(--red);border-color:rgba(255,87,87,.2)}
+.btn-gold{background:rgba(245,158,11,.15);color:var(--gold);border-color:rgba(245,158,11,.25)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-xs{padding:3px 8px;font-size:10.5px}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.modal-bg.show{display:flex}
+.modal{background:var(--bg);border:1px solid var(--b2);border-radius:16px;width:100%;max-width:520px;margin:16px;animation:mIn .2s ease;box-shadow:0 24px 80px rgba(0,0,0,.7);max-height:90vh;overflow-y:auto}
+@keyframes mIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.mhdr{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--b1);position:sticky;top:0;background:var(--bg);z-index:2}
+.mtitle{font-size:15px;font-weight:700}
+.mclose{background:none;border:none;color:var(--t3);font-size:17px;cursor:pointer;padding:4px;transition:color .14s}
+.mclose:hover{color:var(--t1)}
+.mbody{padding:20px 24px}
+.mfoot{padding:16px 24px;border-top:1px solid var(--b1);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--bg)}
+
+/* FORM */
+.fg{margin-bottom:14px}
+.flabel{font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;display:block}
+.fc{width:100%;padding:9px 12px;border:1px solid var(--b2);border-radius:var(--rsm);font-family:var(--font);font-size:12.5px;color:var(--t1);background:var(--surface);outline:none;transition:border-color .15s}
+.fc:focus{border-color:rgba(77,139,255,.45);box-shadow:0 0 0 3px rgba(77,139,255,.1)}
+.fc option{background:var(--s2)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* TOAST */
+#toasts{position:fixed;top:72px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--rsm);font-size:12.5px;font-weight:500;min-width:260px;animation:tIn .3s ease both;position:relative;overflow:hidden}
+.toast::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.toast.s::before{background:var(--green)}.toast.e::before{background:var(--red)}.toast.i::before{background:var(--blue)}
+@keyframes tIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+
+/* MISC */
+.empty{padding:40px;text-align:center;color:var(--t3)}
+@media(max-width:768px){.stat-grid{grid-template-columns:1fr 1fr}.content{padding:16px}}
+</style>
+</head>
+<body>
+
+<div id="toasts"></div>
+
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="hdr-logo">SF</div>
+    <div>
+      <div class="hdr-title">StockFlow Pro</div>
+      <div class="hdr-sub">⚡ Super Admin Panel</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <button class="btn btn-ghost btn-sm" onclick="loadData()">↻ Refresh</button>
+    <button class="btn btn-primary btn-sm" onclick="openModal('m-addClient')">+ Tambah Client</button>
+    <span class="admin-badge">VAHD Admin</span>
+  </div>
+</header>
+
+<div class="content">
+
+  <!-- STAT CARDS -->
+  <div class="stat-grid">
+    <div class="stat">
+      <div class="stat-bar" style="background:linear-gradient(90deg,var(--blue),#6366f1)"></div>
+      <div class="stat-lbl">Total Client</div>
+      <div class="stat-val" style="color:var(--blue)" id="s-total">—</div>
+      <div class="stat-meta" id="s-total-meta">Loading…</div>
+    </div>
+    <div class="stat">
+      <div class="stat-bar" style="background:linear-gradient(90deg,var(--green),#00b86e)"></div>
+      <div class="stat-lbl">Active Subscription</div>
+      <div class="stat-val" style="color:var(--green)" id="s-active">—</div>
+      <div class="stat-meta" id="s-active-meta">Loading…</div>
+    </div>
+    <div class="stat">
+      <div class="stat-bar" style="background:linear-gradient(90deg,var(--gold),#d97706)"></div>
+      <div class="stat-lbl">MRR (Est.)</div>
+      <div class="stat-val" style="color:var(--gold)" id="s-mrr">—</div>
+      <div class="stat-meta">Monthly Recurring Revenue</div>
+    </div>
+    <div class="stat">
+      <div class="stat-bar" style="background:linear-gradient(90deg,var(--red),#e03333)"></div>
+      <div class="stat-lbl">Expired / Free</div>
+      <div class="stat-val" style="color:var(--red)" id="s-expired">—</div>
+      <div class="stat-meta" id="s-expired-meta">Perlu follow up</div>
+    </div>
+  </div>
+
+  <!-- CLIENT LIST -->
+  <div class="card">
+    <div class="card-hdr">
+      <div>
+        <div class="card-title">👥 Daftar Client & Subscription</div>
+        <div class="card-sub">Manage plan, aktifkan subscription, catat pembayaran</div>
+      </div>
+      <input type="text" class="fc" style="width:220px;padding:7px 12px;font-size:12px" placeholder="🔍 Cari client…" oninput="filterClients(this.value)">
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Admin</th>
+            <th>Plan</th>
+            <th>Status</th>
+            <th>Expired</th>
+            <th>MRR</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="client-tbody">
+          <tr><td colspan="7"><div class="empty">Loading…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- BILLING HISTORY -->
+  <div class="card">
+    <div class="card-hdr">
+      <div>
+        <div class="card-title">💰 Riwayat Pembayaran</div>
+        <div class="card-sub">Semua transaksi subscription</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openModal('m-addPayment')">+ Catat Pembayaran</button>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr><th>Tanggal</th><th>Company</th><th>Plan</th><th>Amount</th><th>Metode</th><th>Periode</th><th>Notes</th></tr>
+        </thead>
+        <tbody id="billing-tbody">
+          <tr><td colspan="7"><div class="empty">Loading…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- UPGRADE PLAN MODAL -->
+<div class="modal-bg" id="m-upgrade"><div class="modal">
+  <div class="mhdr">
+    <div>
+      <div class="mtitle">⚡ Upgrade / Kelola Plan</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:3px" id="upgrade-company-name">—</div>
+    </div>
+    <button class="mclose" onclick="closeModal('m-upgrade')">✕</button>
+  </div>
+  <div class="mbody">
+    <input type="hidden" id="upgrade-company-id">
+    <div class="fg">
+      <label class="flabel">Plan</label>
+      <select class="fc" id="upgrade-plan">
+        <option value="free">Free</option>
+        <option value="basic">Basic — Rp 750.000/bulan</option>
+        <option value="pro">Pro — Rp 2.000.000/bulan (Recommended)</option>
+        <option value="enterprise">Enterprise — Rp 5.000.000+/bulan</option>
+      </select>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label class="flabel">Tanggal Mulai</label>
+        <input class="fc" id="upgrade-start" type="date">
+      </div>
+      <div class="fg">
+        <label class="flabel">Tanggal Expired</label>
+        <input class="fc" id="upgrade-end" type="date">
+      </div>
+    </div>
+
+    <!-- Plan features info -->
+    <div id="plan-info" style="background:var(--s2);border:1px solid var(--b1);border-radius:var(--rsm);padding:14px;margin-top:4px;font-size:12px;color:var(--t2);line-height:1.8"></div>
+
+    <div class="fg" style="margin-top:14px">
+      <label class="flabel">Catatan Internal</label>
+      <input class="fc" id="upgrade-notes" type="text" placeholder="Transfer BCA 12 April 2026, ref: TRX001">
+    </div>
+
+    <!-- Catat pembayaran sekaligus -->
+    <div style="background:rgba(0,232,138,.06);border:1px solid rgba(0,232,138,.15);border-radius:var(--rsm);padding:12px 14px;margin-top:4px">
+      <div style="font-size:11.5px;font-weight:600;color:var(--green);margin-bottom:10px">💰 Catat Pembayaran Sekaligus</div>
+      <div class="frow">
+        <div class="fg" style="margin-bottom:0">
+          <label class="flabel">Amount (IDR)</label>
+          <input class="fc" id="upgrade-amount" type="number" placeholder="750000">
+        </div>
+        <div class="fg" style="margin-bottom:0">
+          <label class="flabel">Metode Pembayaran</label>
+          <select class="fc" id="upgrade-method">
+            <option>Transfer BCA</option>
+            <option>Transfer BRI</option>
+            <option>Transfer BNI</option>
+            <option>Transfer Mandiri</option>
+            <option>QRIS</option>
+            <option>Cash</option>
+            <option>Lainnya</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mfoot">
+    <button class="btn btn-ghost" onclick="closeModal('m-upgrade')">Batal</button>
+    <button class="btn btn-primary" onclick="savePlan()">✅ Aktifkan Plan</button>
+  </div>
+</div></div>
+
+<!-- ADD CLIENT MODAL -->
+<div class="modal-bg" id="m-addClient"><div class="modal">
+  <div class="mhdr">
+    <div class="mtitle">➕ Tambah Client Baru</div>
+    <button class="mclose" onclick="closeModal('m-addClient')">✕</button>
+  </div>
+  <div class="mbody">
+    <div class="fg"><label class="flabel">Nama Perusahaan *</label><input class="fc" id="nc-company" type="text" placeholder="PT Maju Bersama"></div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Nama Admin *</label><input class="fc" id="nc-name" type="text" placeholder="Nama lengkap"></div>
+      <div class="fg"><label class="flabel">Email Admin *</label><input class="fc" id="nc-email" type="email" placeholder="admin@company.com"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Password Sementara *</label><input class="fc" id="nc-password" type="text" placeholder="min. 8 karakter" value="StockFlow2026!"></div>
+      <div class="fg"><label class="flabel">Plan Awal</label>
+        <select class="fc" id="nc-plan">
+          <option value="free">Free (Trial)</option>
+          <option value="basic">Basic</option>
+          <option value="pro" selected>Pro</option>
+          <option value="enterprise">Enterprise</option>
+        </select>
+      </div>
+    </div>
+    <div style="background:var(--s2);border:1px solid var(--b1);border-radius:var(--rsm);padding:12px;font-size:12px;color:var(--t3);line-height:1.6;margin-top:4px">
+      💡 Client akan langsung bisa login dengan email & password di atas. Minta mereka ganti password setelah login pertama.
+    </div>
+  </div>
+  <div class="mfoot">
+    <button class="btn btn-ghost" onclick="closeModal('m-addClient')">Batal</button>
+    <button class="btn btn-primary" id="nc-btn" onclick="createClient()">✅ Buat Akun Client</button>
+  </div>
+</div></div>
+
+<!-- ADD PAYMENT MODAL -->
+<div class="modal-bg" id="m-addPayment"><div class="modal">
+  <div class="mhdr">
+    <div class="mtitle">💰 Catat Pembayaran</div>
+    <button class="mclose" onclick="closeModal('m-addPayment')">✕</button>
+  </div>
+  <div class="mbody">
+    <div class="fg"><label class="flabel">Company</label><select class="fc" id="pay-company"></select></div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Plan</label>
+        <select class="fc" id="pay-plan">
+          <option value="basic">Basic</option>
+          <option value="pro">Pro</option>
+          <option value="enterprise">Enterprise</option>
+        </select>
+      </div>
+      <div class="fg"><label class="flabel">Amount (IDR)</label><input class="fc" id="pay-amount" type="number" placeholder="750000"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Tanggal Bayar</label><input class="fc" id="pay-date" type="date"></div>
+      <div class="fg"><label class="flabel">Metode</label>
+        <select class="fc" id="pay-method">
+          <option>Transfer BCA</option><option>Transfer BRI</option><option>Transfer BNI</option>
+          <option>Transfer Mandiri</option><option>QRIS</option><option>Cash</option><option>Lainnya</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flabel">Periode Mulai</label><input class="fc" id="pay-start" type="date"></div>
+      <div class="fg"><label class="flabel">Periode Akhir</label><input class="fc" id="pay-end" type="date"></div>
+    </div>
+    <div class="fg"><label class="flabel">Notes</label><input class="fc" id="pay-notes" type="text" placeholder="Ref transfer, nomor invoice, dll"></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn btn-ghost" onclick="closeModal('m-addPayment')">Batal</button>
+    <button class="btn btn-primary" onclick="savePayment()">💰 Simpan Pembayaran</button>
+  </div>
+</div></div>
+
+<script>
+// ════════════════════════════════════════
+// SUPABASE
+// ════════════════════════════════════════
+const SUPABASE_URL = 'https://osrtcishupybpvlcvoke.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zcnRjaXNodXB5YnB2bGN2b2tlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNzQzODIsImV4cCI6MjA5Mjg1MDM4Mn0.x3Wu0hW0eUbcXJQb7sg2zQD0hHqVVDSNNw0HkBgz74I';
+const SUPER_ADMIN_EMAIL = 'victor.nugrahadi@gmail.com';
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const PLAN_PRICES = { free: 0, basic: 750000, pro: 2000000, enterprise: 5000000 };
+const PLAN_FEATURES = {
+  free: '• Max 2 Project · Max 3 Site\n• Input Manual\n• Dashboard Inventory\n• Low Stock Alert',
+  basic: '• Max 2 Project · Max 3 Site\n• Input Manual\n• Dashboard Inventory\n• Low Stock Alert\n• Harga: Rp 750.000/bulan',
+  pro: '• Unlimited Project & Site\n• Excel Import\n• Risk Calculation ($/day)\n• Priority Alert · Export Report\n• Multi User (Limited)\n• Harga: Rp 2.000.000/bulan',
+  enterprise: '• Unlimited Project & Site\n• Excel + Automation\n• AI Suggested Action · Risk Simulation\n• WhatsApp Alert · Client Report PDF\n• Full Role-based Multi User\n• Harga: Rp 5.000.000+/bulan'
+};
+
+let ALL_COMPANIES = [];
+let ALL_BILLING = [];
+let ALL_PROFILES = [];
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+async function init(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session){ window.location.href = 'index.html'; return; }
+  if(session.user.email !== SUPER_ADMIN_EMAIL){
+    document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;color:#ff5757;font-family:'Sora',sans-serif">
+      <div style="font-size:48px">🚫</div>
+      <div style="font-size:18px;font-weight:700">Access Denied</div>
+      <div style="font-size:13px;color:#4a5270">Halaman ini hanya untuk Super Admin VAHD</div>
+      <a href="app.html" style="color:#4d8bff;font-size:13px">← Kembali ke Dashboard</a>
+    </div>`;
+    return;
+  }
+  await loadData();
+}
+
+async function loadData(){
+  const [comp, billing, profiles] = await Promise.all([
+    sb.from('companies').select('*').order('created_at', {ascending: false}),
+    sb.from('billing_history').select('*').order('created_at', {ascending: false}),
+    sb.from('profiles').select('*')
+  ]);
+
+  ALL_COMPANIES = comp.data || [];
+  ALL_BILLING = billing.data || [];
+  ALL_PROFILES = profiles.data || [];
+
+  renderStats();
+  renderClients();
+  renderBilling();
+  populateCompanySelect();
+}
+
+// ════════════════════════════════════════
+// STATS
+// ════════════════════════════════════════
+function renderStats(){
+  const total = ALL_COMPANIES.length;
+  const active = ALL_COMPANIES.filter(c=>c.plan !== 'free' && (!c.plan_expires_at || new Date(c.plan_expires_at) > new Date())).length;
+  const expired = ALL_COMPANIES.filter(c=>c.plan === 'free' || (c.plan_expires_at && new Date(c.plan_expires_at) <= new Date())).length;
+  const mrr = ALL_COMPANIES.reduce((s,c)=>{
+    if(c.plan_expires_at && new Date(c.plan_expires_at) > new Date()){
+      return s + (PLAN_PRICES[c.plan] || 0);
+    }
+    return s;
+  }, 0);
+
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-total-meta').textContent = `${ALL_PROFILES.length} total users`;
+  document.getElementById('s-active').textContent = active;
+  document.getElementById('s-active-meta').textContent = `${total - active} inactive/free`;
+  document.getElementById('s-mrr').textContent = `Rp ${(mrr/1000000).toFixed(1)}Jt`;
+  document.getElementById('s-expired').textContent = expired;
+}
+
+// ════════════════════════════════════════
+// CLIENT TABLE
+// ════════════════════════════════════════
+function renderClients(filter=''){
+  const tb = document.getElementById('client-tbody');
+  let data = ALL_COMPANIES;
+  if(filter) data = data.filter(c=>c.name.toLowerCase().includes(filter.toLowerCase()));
+
+  if(!data.length){
+    tb.innerHTML = `<tr><td colspan="7"><div class="empty">Belum ada client</div></td></tr>`;
+    return;
+  }
+
+  tb.innerHTML = data.map(c=>{
+    const admin = ALL_PROFILES.find(p=>p.company_id===c.id && p.role==='admin');
+    const isExpired = c.plan_expires_at && new Date(c.plan_expires_at) <= new Date();
+    const isActive = c.plan !== 'free' && c.plan_expires_at && !isExpired;
+    const isFree = c.plan === 'free' || !c.plan_expires_at;
+
+    const statusHtml = isFree
+      ? `<span class="status-trial">● Free/Trial</span>`
+      : isExpired
+        ? `<span class="status-expired">● Expired</span>`
+        : `<span class="status-active">● Active</span>`;
+
+    const expiredDate = c.plan_expires_at
+      ? new Date(c.plan_expires_at).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})
+      : '—';
+
+    const daysLeft = c.plan_expires_at
+      ? Math.ceil((new Date(c.plan_expires_at) - new Date()) / 86400000)
+      : null;
+
+    const expiredHtml = daysLeft !== null
+      ? `${expiredDate}<br><span style="font-size:10px;color:${daysLeft<=7?'var(--red)':daysLeft<=30?'var(--yellow)':'var(--t3)'}">${daysLeft>0?daysLeft+' hari lagi':'Sudah expired'}</span>`
+      : '—';
+
+    const mrr = PLAN_PRICES[c.plan] || 0;
+
+    return `<tr>
+      <td>
+        <div style="font-weight:700;font-size:13px">${c.name}</div>
+        <div style="font-size:10.5px;color:var(--t3);margin-top:2px">${c.plan?.toUpperCase() || 'FREE'} · ${new Date(c.created_at).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}</div>
+      </td>
+      <td>
+        <div style="font-size:12px">${admin?.full_name || '—'}</div>
+        <div style="font-size:10.5px;color:var(--t3)">${admin?.id ? '✓ Terdaftar' : '⚠ Belum ada admin'}</div>
+      </td>
+      <td><span class="plan-badge plan-${c.plan||'free'}">${c.plan||'free'}</span></td>
+      <td>${statusHtml}</td>
+      <td style="font-size:12px">${expiredHtml}</td>
+      <td style="font-size:12px;color:var(--gold);font-weight:700">${mrr>0?'Rp '+(mrr/1000).toFixed(0)+'K':'—'}</td>
+      <td>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-green btn-xs" onclick="openUpgrade('${c.id}','${c.name}','${c.plan||'free'}')">⚡ Plan</button>
+          <button class="btn btn-ghost btn-xs" onclick="viewClient('${c.id}')">👁 Detail</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterClients(q){ renderClients(q); }
+
+// ════════════════════════════════════════
+// BILLING TABLE
+// ════════════════════════════════════════
+function renderBilling(){
+  const tb = document.getElementById('billing-tbody');
+  if(!ALL_BILLING.length){
+    tb.innerHTML = `<tr><td colspan="7"><div class="empty">Belum ada riwayat pembayaran</div></td></tr>`;
+    return;
+  }
+  tb.innerHTML = ALL_BILLING.map(b=>{
+    const comp = ALL_COMPANIES.find(c=>c.id===b.company_id);
+    return `<tr>
+      <td style="color:var(--t3);font-size:11.5px">${b.payment_date ? new Date(b.payment_date).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</td>
+      <td style="font-weight:600">${comp?.name || '—'}</td>
+      <td><span class="plan-badge plan-${b.plan}">${b.plan}</span></td>
+      <td style="font-weight:700;color:var(--green)">Rp ${(b.amount||0).toLocaleString('id-ID')}</td>
+      <td style="color:var(--t2)">${b.payment_method||'—'}</td>
+      <td style="font-size:11px;color:var(--t3)">${b.period_start?new Date(b.period_start).toLocaleDateString('id-ID',{day:'2-digit',month:'short'}):'—'} → ${b.period_end?new Date(b.period_end).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}):'—'}</td>
+      <td style="color:var(--t3);font-size:11.5px">${b.notes||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+// UPGRADE PLAN
+// ════════════════════════════════════════
+function openUpgrade(id, name, currentPlan){
+  document.getElementById('upgrade-company-id').value = id;
+  document.getElementById('upgrade-company-name').textContent = name;
+  document.getElementById('upgrade-plan').value = currentPlan;
+  document.getElementById('upgrade-amount').value = PLAN_PRICES[currentPlan] || '';
+
+  const today = new Date().toISOString().split('T')[0];
+  const nextMonth = new Date(Date.now() + 30*86400000).toISOString().split('T')[0];
+  document.getElementById('upgrade-start').value = today;
+  document.getElementById('upgrade-end').value = nextMonth;
+  document.getElementById('upgrade-notes').value = '';
+
+  updatePlanInfo();
+  openModal('m-upgrade');
+}
+
+function updatePlanInfo(){
+  const plan = document.getElementById('upgrade-plan').value;
+  const info = document.getElementById('plan-info');
+  const price = PLAN_PRICES[plan];
+  document.getElementById('upgrade-amount').value = price || '';
+  info.innerHTML = `<strong style="color:var(--t1)">${plan.toUpperCase()}</strong><br><pre style="white-space:pre-wrap;font-family:var(--font);font-size:11.5px;color:var(--t2);margin-top:6px">${PLAN_FEATURES[plan]||''}</pre>`;
+}
+document.getElementById('upgrade-plan')?.addEventListener('change', updatePlanInfo);
+
+async function savePlan(){
+  const compId = document.getElementById('upgrade-company-id').value;
+  const plan = document.getElementById('upgrade-plan').value;
+  const start = document.getElementById('upgrade-start').value;
+  const end = document.getElementById('upgrade-end').value;
+  const notes = document.getElementById('upgrade-notes').value;
+  const amount = parseFloat(document.getElementById('upgrade-amount').value)||0;
+  const method = document.getElementById('upgrade-method').value;
+
+  const maxP = plan==='basic'?2:999;
+  const maxS = plan==='basic'?3:999;
+
+  // Update company plan
+  const {error} = await sb.from('companies').update({
+    plan, plan_started_at: start||null, plan_expires_at: end||null,
+    max_projects: maxP, max_sites: maxS, billing_notes: notes||null
+  }).eq('id', compId);
+
+  if(error){ toast('e','Error', error.message); return; }
+
+  // Catat pembayaran jika ada amount
+  if(amount > 0){
+    await sb.from('billing_history').insert({
+      company_id: compId, plan, amount, currency: 'IDR',
+      payment_method: method, payment_date: start||null,
+      period_start: start||null, period_end: end||null, notes: notes||null
+    });
+  }
+
+  closeModal('m-upgrade');
+  toast('s','Plan Diaktifkan!', `Plan ${plan.toUpperCase()} berhasil diaktifkan.`);
+  await loadData();
+}
+
+// ════════════════════════════════════════
+// CREATE CLIENT
+// ════════════════════════════════════════
+async function createClient(){
+  const company = document.getElementById('nc-company').value.trim();
+  const name = document.getElementById('nc-name').value.trim();
+  const email = document.getElementById('nc-email').value.trim();
+  const password = document.getElementById('nc-password').value.trim();
+  const plan = document.getElementById('nc-plan').value;
+
+  if(!company||!name||!email||!password){ toast('e','Validation','Semua field wajib diisi.'); return; }
+
+  const btn = document.getElementById('nc-btn');
+  btn.disabled = true; btn.textContent = '⏳ Membuat akun…';
+
+  // 1. Sign up user baru
+  const { data: authData, error: authError } = await sb.auth.signUp({
+    email, password, options: { data: { full_name: name } }
+  });
+
+  if(authError){ toast('e','Error Auth', authError.message); btn.disabled=false; btn.textContent='✅ Buat Akun Client'; return; }
+
+  // 2. Buat company
+  const { data: compData, error: compError } = await sb.from('companies')
+    .insert({ name: company, plan })
+    .select().single();
+
+  if(compError){ toast('e','Error Company', compError.message); btn.disabled=false; btn.textContent='✅ Buat Akun Client'; return; }
+
+  // 3. Update profile
+  if(authData.user){
+    await sb.from('profiles').upsert({
+      id: authData.user.id, company_id: compData.id,
+      full_name: name, role: 'admin'
+    });
+  }
+
+  closeModal('m-addClient');
+  btn.disabled=false; btn.textContent='✅ Buat Akun Client';
+  toast('s','Client Dibuat!', `${company} berhasil dibuat. Email: ${email}`);
+  await loadData();
+}
+
+// ════════════════════════════════════════
+// SAVE PAYMENT
+// ════════════════════════════════════════
+async function savePayment(){
+  const {error} = await sb.from('billing_history').insert({
+    company_id: document.getElementById('pay-company').value,
+    plan: document.getElementById('pay-plan').value,
+    amount: parseFloat(document.getElementById('pay-amount').value)||0,
+    currency: 'IDR',
+    payment_method: document.getElementById('pay-method').value,
+    payment_date: document.getElementById('pay-date').value||null,
+    period_start: document.getElementById('pay-start').value||null,
+    period_end: document.getElementById('pay-end').value||null,
+    notes: document.getElementById('pay-notes').value||null
+  });
+  if(error){ toast('e','Error', error.message); return; }
+  closeModal('m-addPayment');
+  toast('s','Pembayaran Dicatat','Riwayat pembayaran berhasil disimpan.');
+  await loadData();
+}
+
+function populateCompanySelect(){
+  const el = document.getElementById('pay-company');
+  if(el) el.innerHTML = ALL_COMPANIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function viewClient(id){
+  const c = ALL_COMPANIES.find(x=>x.id===id);
+  if(!c) return;
+  const profiles = ALL_PROFILES.filter(p=>p.company_id===id);
+  toast('i',c.name, `${profiles.length} user · Plan: ${c.plan} · Expired: ${c.plan_expires_at ? new Date(c.plan_expires_at).toLocaleDateString('id-ID') : 'N/A'}`);
+}
+
+// ════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════
+function toast(type, title, msg){
+  const icons={s:'✅',e:'❌',i:'ℹ️'};
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]}</span><div style="flex:1"><div style="font-weight:700;font-size:12px">${title}</div><div style="font-size:11.5px;color:var(--t2)">${msg}</div></div><button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--t3);cursor:pointer">✕</button>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(), 4000);
+}
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-bg').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('show')}));
+
+function fmtDate(d){ return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
+
+init();
+</script>
+</body>
+</html>
